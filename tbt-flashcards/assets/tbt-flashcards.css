@@ -1,0 +1,346 @@
+/* TBT Flashcards v1.0.0 */
+
+.tbt-flashcard-app {
+  --tbt-blue: #0859C6;
+  --tbt-blue-dark: #064a9e;
+  --tbt-blue-light: #e8f0fc;
+  --tbt-blue-glow: rgba(8, 89, 198, 0.15);
+  --card-bg: #ffffff;
+  --card-back-bg: #f6f9ff;
+  --text-primary: #1a2332;
+  --text-secondary: #5a6a7e;
+  --text-muted: #8a96a6;
+  --border: #e2e8f0;
+  --radius: 16px;
+  --shadow: 0 4px 24px rgba(8, 89, 198, 0.08), 0 1px 3px rgba(0,0,0,0.06);
+  --shadow-hover: 0 8px 40px rgba(8, 89, 198, 0.14), 0 2px 6px rgba(0,0,0,0.08);
+  --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  font-family: 'Roboto Slab', serif;
+  font-weight: 300;
+  color: var(--text-primary);
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  position: relative;
+  box-sizing: border-box;
+}
+
+.tbt-flashcard-app *,
+.tbt-flashcard-app *::before,
+.tbt-flashcard-app *::after {
+  box-sizing: border-box;
+}
+
+/* ── Header ── */
+.tbt-flashcard-app .fc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  padding: 0 4px;
+  gap: 12px;
+}
+
+.tbt-flashcard-app .fc-set-title {
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--tbt-blue);
+  letter-spacing: -0.3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.tbt-flashcard-app .fc-counter {
+  font-size: 14px;
+  font-weight: 300;
+  color: var(--text-secondary);
+  background: white;
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.tbt-flashcard-app .fc-counter-current {
+  color: var(--tbt-blue);
+  font-weight: 700;
+  font-size: 16px;
+}
+
+/* ── Card Scene ── */
+.tbt-flashcard-app .fc-card-scene {
+  perspective: 1200px;
+  width: 100%;
+  height: 340px;
+  cursor: pointer;
+  margin-bottom: 20px;
+}
+
+.tbt-flashcard-app .fc-card {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tbt-flashcard-app .fc-card.is-flipped {
+  transform: rotateY(180deg);
+}
+
+.tbt-flashcard-app .fc-card-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 36px;
+  transition: box-shadow var(--transition);
+  overflow: hidden;
+}
+
+.tbt-flashcard-app .fc-card-scene:hover .fc-card-face {
+  box-shadow: var(--shadow-hover);
+}
+
+.tbt-flashcard-app .fc-card-front {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+}
+
+.tbt-flashcard-app .fc-card-front::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--tbt-blue);
+}
+
+.tbt-flashcard-app .fc-word {
+  font-weight: 700;
+  font-size: 36px;
+  color: var(--text-primary);
+  text-align: center;
+  line-height: 1.2;
+  letter-spacing: -0.5px;
+}
+
+.tbt-flashcard-app .fc-audio-btn {
+  margin-top: 16px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid var(--tbt-blue);
+  background: white;
+  color: var(--tbt-blue);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition);
+}
+
+.tbt-flashcard-app .fc-audio-btn:hover {
+  background: var(--tbt-blue);
+  color: white;
+  transform: scale(1.08);
+}
+
+.tbt-flashcard-app .fc-audio-btn svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+.tbt-flashcard-app .fc-tap-hint {
+  position: absolute;
+  bottom: 20px;
+  font-size: 12px;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  font-weight: 300;
+}
+
+.tbt-flashcard-app .fc-card-back {
+  background: var(--card-back-bg);
+  border: 1px solid var(--border);
+  transform: rotateY(180deg);
+  gap: 16px;
+}
+
+.tbt-flashcard-app .fc-card-back::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--tbt-blue), #3b82f6);
+}
+
+.tbt-flashcard-app .fc-translation {
+  font-weight: 700;
+  font-size: 28px;
+  color: var(--tbt-blue);
+  text-align: center;
+  line-height: 1.3;
+}
+
+.tbt-flashcard-app .fc-phonetic {
+  font-size: 18px;
+  font-weight: 300;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.tbt-flashcard-app .fc-example {
+  font-size: 18px;
+  font-weight: 300;
+  color: var(--text-secondary);
+  text-align: center;
+  line-height: 1.5;
+  max-width: 90%;
+}
+
+/* ── Navigation ── */
+.tbt-flashcard-app .fc-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.tbt-flashcard-app .fc-nav-btn {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background: white;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition);
+  flex-shrink: 0;
+}
+
+.tbt-flashcard-app .fc-nav-btn:hover:not(:disabled) {
+  border-color: var(--tbt-blue);
+  color: var(--tbt-blue);
+  box-shadow: 0 2px 12px var(--tbt-blue-glow);
+  transform: translateY(-1px);
+}
+
+.tbt-flashcard-app .fc-nav-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.tbt-flashcard-app .fc-nav-btn svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+.tbt-flashcard-app .fc-flip-btn {
+  padding: 12px 28px;
+  border-radius: 12px;
+  border: 2px solid var(--tbt-blue);
+  background: white;
+  color: var(--tbt-blue);
+  font-family: 'Roboto Slab', serif;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition);
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+.tbt-flashcard-app .fc-flip-btn:hover {
+  background: var(--tbt-blue);
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px var(--tbt-blue-glow);
+}
+
+/* ── Finish card ── */
+.tbt-flashcard-app .fc-finish-message {
+  font-weight: 700;
+  font-size: 28px;
+  color: var(--tbt-blue);
+  text-align: center;
+  line-height: 1.4;
+}
+
+.tbt-flashcard-app .fc-finish-sub {
+  font-weight: 300;
+  font-size: 18px;
+  color: var(--text-secondary);
+  text-align: center;
+  margin-top: 8px;
+}
+
+/* ── Confetti canvas ── */
+.tbt-flashcard-app .fc-confetti {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ── Slide animations ── */
+.tbt-flashcard-app .fc-card.slide-left {
+  animation: tbt-fc-slideLeft 0.25s ease-out;
+}
+
+.tbt-flashcard-app .fc-card.slide-right {
+  animation: tbt-fc-slideRight 0.25s ease-out;
+}
+
+@keyframes tbt-fc-slideLeft {
+  0% { opacity: 0; transform: translateX(30px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes tbt-fc-slideRight {
+  0% { opacity: 0; transform: translateX(-30px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+
+/* ── Responsive ── */
+@media (max-width: 480px) {
+  .tbt-flashcard-app .fc-card-scene {
+    height: 300px;
+  }
+
+  .tbt-flashcard-app .fc-word {
+    font-size: 28px;
+  }
+
+  .tbt-flashcard-app .fc-translation {
+    font-size: 22px;
+  }
+
+  .tbt-flashcard-app .fc-card-face {
+    padding: 32px 24px;
+  }
+
+  .tbt-flashcard-app .fc-set-title {
+    font-size: 15px;
+  }
+}
