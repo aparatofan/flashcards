@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Blue Tree — Flashcards</title>
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --tbt-blue: #0859C6;
+    --tbt-blue-dark: #064a9e;
+    --tbt-blue-light: #e8f0fc;
+    --tbt-blue-glow: rgba(8, 89, 198, 0.15);
+    --card-bg: #ffffff;
+    --card-back-bg: #f6f9ff;
+    --text-primary: #1a2332;
+    --text-secondary: #5a6a7e;
+    --text-muted: #8a96a6;
+    --border: #e2e8f0;
+    --radius: 16px;
+    --shadow: 0 4px 24px rgba(8, 89, 198, 0.08), 0 1px 3px rgba(0,0,0,0.06);
+    --shadow-hover: 0 8px 40px rgba(8, 89, 198, 0.14), 0 2px 6px rgba(0,0,0,0.08);
+    --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Roboto Slab', serif;
+    font-weight: 300;
+    background: linear-gradient(160deg, #f0f4fa 0%, #e8edf6 50%, #f5f7fb 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    color: var(--text-primary);
+  }
+
+  .flashcard-app {
+    width: 100%;
+    max-width: 560px;
+    position: relative;
+  }
+
+  /* ── Header ── */
+  .fc-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    padding: 0 4px;
+    gap: 12px;
+  }
+
+  .fc-set-title {
+    font-weight: 700;
+    font-size: 18px;
+    color: var(--tbt-blue);
+    letter-spacing: -0.3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
+
+  .fc-counter {
+    font-size: 14px;
+    font-weight: 300;
+    color: var(--text-secondary);
+    background: white;
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .fc-counter-current {
+    color: var(--tbt-blue);
+    font-weight: 700;
+    font-size: 16px;
+  }
+
+  .fc-progress-track { display: none; }
+
+  /* ── Card Scene ── */
+  .fc-card-scene {
+    perspective: 1200px;
+    width: 100%;
+    height: 340px;
+    cursor: pointer;
+    margin-bottom: 20px;
+  }
+
+  .fc-card {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .fc-card.is-flipped {
+    transform: rotateY(180deg);
+  }
+
+  .fc-card-face {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 36px;
+    transition: box-shadow var(--transition);
+    overflow: hidden;
+  }
+
+  .fc-card-scene:hover .fc-card-face {
+    box-shadow: var(--shadow-hover);
+  }
+
+  .fc-card-front {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+  }
+
+  .fc-card-front::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 4px;
+    background: var(--tbt-blue);
+  }
+
+  .fc-word {
+    font-weight: 700;
+    font-size: 36px;
+    color: var(--text-primary);
+    text-align: center;
+    line-height: 1.2;
+    letter-spacing: -0.5px;
+  }
+
+  .fc-audio-btn {
+    margin-top: 16px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 2px solid var(--tbt-blue);
+    background: white;
+    color: var(--tbt-blue);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition);
+  }
+
+  .fc-audio-btn:hover {
+    background: var(--tbt-blue);
+    color: white;
+    transform: scale(1.08);
+  }
+
+  .fc-audio-btn svg {
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
+  }
+
+  .fc-tap-hint {
+    position: absolute;
+    bottom: 20px;
+    font-size: 12px;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    font-weight: 300;
+  }
+
+  .fc-card-back {
+    background: var(--card-back-bg);
+    border: 1px solid var(--border);
+    transform: rotateY(180deg);
+    gap: 16px;
+  }
+
+  .fc-card-back::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--tbt-blue), #3b82f6);
+  }
+
+  .fc-translation {
+    font-weight: 700;
+    font-size: 28px;
+    color: var(--tbt-blue);
+    text-align: center;
+    line-height: 1.3;
+  }
+
+  .fc-phonetic {
+    font-size: 18px;
+    font-weight: 300;
+    color: var(--text-secondary);
+    text-align: center;
+  }
+
+  .fc-divider { display: none; }
+
+  .fc-example {
+    font-size: 18px;
+    font-weight: 300;
+    color: var(--text-secondary);
+    text-align: center;
+    line-height: 1.5;
+    max-width: 90%;
+  }
+
+  /* ── Navigation ── */
+  .fc-nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+  }
+
+  .fc-nav-btn {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    background: white;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition);
+    flex-shrink: 0;
+  }
+
+  .fc-nav-btn:hover:not(:disabled) {
+    border-color: var(--tbt-blue);
+    color: var(--tbt-blue);
+    box-shadow: 0 2px 12px var(--tbt-blue-glow);
+    transform: translateY(-1px);
+  }
+
+  .fc-nav-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
+  .fc-nav-btn svg {
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
+  }
+
+  .fc-flip-btn {
+    padding: 12px 28px;
+    border-radius: 12px;
+    border: 2px solid var(--tbt-blue);
+    background: white;
+    color: var(--tbt-blue);
+    font-family: 'Roboto Slab', serif;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all var(--transition);
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+  }
+
+  .fc-flip-btn:hover {
+    background: var(--tbt-blue);
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px var(--tbt-blue-glow);
+  }
+
+  /* ── CSV Upload overlay ── */
+  .fc-upload-overlay {
+    width: 100%;
+    height: 340px;
+    border: 2px dashed var(--tbt-blue);
+    border-radius: var(--radius);
+    background: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 20px;
+    cursor: pointer;
+    transition: all var(--transition);
+  }
+
+  .fc-upload-overlay:hover {
+    background: var(--tbt-blue-light);
+    border-color: var(--tbt-blue-dark);
+  }
+
+  .fc-upload-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--tbt-blue-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--tbt-blue);
+  }
+
+  .fc-upload-icon svg {
+    width: 28px;
+    height: 28px;
+    fill: currentColor;
+  }
+
+  .fc-upload-text {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .fc-upload-hint {
+    font-size: 12px;
+    font-weight: 300;
+    color: var(--text-muted);
+  }
+
+  .fc-upload-input {
+    display: none;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 480px) {
+    body { padding: 16px; }
+    .fc-card-scene { height: 300px; }
+    .fc-word { font-size: 28px; }
+    .fc-translation { font-size: 22px; }
+    .fc-card-face { padding: 32px 24px; }
+    .fc-set-title { font-size: 15px; }
+  }
+
+  /* ── Finish card ── */
+  .fc-finish-message {
+    font-weight: 700;
+    font-size: 28px;
+    color: var(--tbt-blue);
+    text-align: center;
+    line-height: 1.4;
+  }
+
+  .fc-finish-sub {
+    font-weight: 300;
+    font-size: 18px;
+    color: var(--text-secondary);
+    text-align: center;
+    margin-top: 8px;
+  }
+
+  /* ── Confetti canvas ── */
+  .fc-confetti {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  .fc-card.slide-left { animation: slideLeft 0.25s ease-out; }
+  .fc-card.slide-right { animation: slideRight 0.25s ease-out; }
+
+  @keyframes slideLeft {
+    0% { opacity: 0; transform: translateX(30px); }
+    100% { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes slideRight {
+    0% { opacity: 0; transform: translateX(-30px); }
+    100% { opacity: 1; transform: translateX(0); }
+  }
+</style>
+</head>
+<body>
+
+<div class="flashcard-app" id="app">
+
+  <div class="fc-header">
+    <div class="fc-set-title" id="setTitle">Flashcards</div>
+    <div class="fc-counter" id="counter">
+      <span class="fc-counter-current" id="counterCurrent">0</span> / <span id="counterTotal">0</span>
+    </div>
+  </div>
+
+  <div class="fc-progress-track">
+    <div class="fc-progress-fill" id="progress" style="width: 0%"></div>
+  </div>
+
+  <div class="fc-upload-overlay" id="uploadOverlay" onclick="document.getElementById('csvInput').click()">
+    <div class="fc-upload-icon">
+      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm4 18H6V4h7v5h5v11zM8 15h8v2H8v-2zm0-3h8v2H8v-2z"/></svg>
+    </div>
+    <div class="fc-upload-text">Upload CSV flashcard file</div>
+    <div class="fc-upload-hint">Columns: word, phonetic, translation, example</div>
+    <input type="file" id="csvInput" class="fc-upload-input" accept=".csv,.tsv,.txt" onchange="handleCSV(event)">
+  </div>
+
+  <div class="fc-card-scene" id="cardScene" style="display:none" onclick="flipCard()">
+    <div class="fc-card" id="card">
+      <div class="fc-card-face fc-card-front">
+        <div class="fc-word" id="wordText">—</div>
+        <button class="fc-audio-btn" id="audioBtn" onclick="event.stopPropagation(); playAudio()" title="Listen">
+          <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+        </button>
+        <div class="fc-tap-hint">tap to flip</div>
+      </div>
+      <div class="fc-card-face fc-card-back">
+        <div class="fc-translation" id="translationText">—</div>
+        <div class="fc-phonetic" id="phoneticText"></div>
+        <div class="fc-divider"></div>
+        <div class="fc-example" id="exampleText"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="fc-nav" id="nav" style="display:none">
+    <button class="fc-nav-btn" id="prevBtn" onclick="prevCard()" title="Previous">
+      <svg viewBox="0 0 24 24"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6z"/></svg>
+    </button>
+    <button class="fc-flip-btn" onclick="flipCard()">Flip</button>
+    <button class="fc-nav-btn" id="nextBtn" onclick="nextCard()" title="Next">
+      <svg viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
+    </button>
+  </div>
+</div>
+
+<canvas class="fc-confetti" id="confettiCanvas"></canvas>
+
+<div style="position:fixed;bottom:16px;right:16px;">
+  <button onclick="loadDemo()" style="font-family:'Roboto Slab',serif;font-size:12px;padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:white;color:var(--text-secondary);cursor:pointer;">Load demo set</button>
+</div>
+
+<script>
+  let cards = [];
+  let currentIndex = 0;
+  let isFlipped = false;
+
+  function titleFromFilename(filename) {
+    return filename
+      .replace(/\.[^/.]+$/, '')
+      .replace(/[_-]/g, ' ')
+      .replace(/\b\w/g, c => c.toUpperCase());
+  }
+
+  function handleCSV(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    document.getElementById('setTitle').textContent = titleFromFilename(file.name);
+    const reader = new FileReader();
+    reader.onload = function(e) { parseCSV(e.target.result); };
+    reader.readAsText(file);
+  }
+
+  function parseCSV(text) {
+    const lines = text.trim().split('\n');
+    if (lines.length < 2) return;
+    const header = lines[0];
+    const delimiter = header.includes('\t') ? '\t' : header.includes(';') ? ';' : ',';
+    const headers = lines[0].split(delimiter).map(h => h.trim().toLowerCase().replace(/["']/g, ''));
+
+    const wordIdx = headers.findIndex(h => h === 'word' || h === 'english' || h === 'en' || h === 'front');
+    const phoneticIdx = headers.findIndex(h => h === 'phonetic' || h === 'pronunciation' || h === 'ipa');
+    const translationIdx = headers.findIndex(h => h === 'translation' || h === 'polish' || h === 'pl' || h === 'back');
+    const exampleIdx = headers.findIndex(h => h === 'example' || h === 'sentence' || h === 'context');
+
+    if (wordIdx === -1 || translationIdx === -1) {
+      alert('CSV must have at least "word" and "translation" columns.');
+      return;
+    }
+
+    cards = [];
+    for (let i = 1; i < lines.length; i++) {
+      const cols = parseCSVLine(lines[i], delimiter);
+      if (cols.length <= Math.max(wordIdx, translationIdx)) continue;
+      const word = cols[wordIdx]?.trim();
+      if (!word) continue;
+      cards.push({
+        word: word,
+        phonetic: phoneticIdx >= 0 ? (cols[phoneticIdx]?.trim() || '') : '',
+        translation: cols[translationIdx]?.trim() || '',
+        example: exampleIdx >= 0 ? (cols[exampleIdx]?.trim() || '') : ''
+      });
+    }
+
+    if (cards.length > 0) {
+      currentIndex = 0;
+      isFlipped = false;
+      showApp();
+      renderCard();
+    }
+  }
+
+  function parseCSVLine(line, delimiter) {
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        if (inQuotes && line[i + 1] === '"') { current += '"'; i++; }
+        else { inQuotes = !inQuotes; }
+      } else if (ch === delimiter && !inQuotes) {
+        result.push(current); current = '';
+      } else { current += ch; }
+    }
+    result.push(current);
+    return result.map(s => s.replace(/^"|"$/g, '').trim());
+  }
+
+  function showApp() {
+    document.getElementById('uploadOverlay').style.display = 'none';
+    document.getElementById('cardScene').style.display = 'block';
+    document.getElementById('nav').style.display = 'flex';
+  }
+
+  function isFinishCard() {
+    return currentIndex === cards.length;
+  }
+
+  function renderCard() {
+    if (isFinishCard()) {
+      // Show finish card
+      document.getElementById('wordText').textContent = '';
+      document.getElementById('audioBtn').style.display = 'none';
+      document.querySelector('.fc-tap-hint').style.display = 'none';
+      document.getElementById('translationText').textContent = '';
+      document.getElementById('phoneticText').textContent = '';
+      document.getElementById('exampleText').textContent = '';
+
+      // Replace front content with finish message
+      const front = document.querySelector('.fc-card-front');
+      if (!document.getElementById('finishMsg')) {
+        const msg = document.createElement('div');
+        msg.id = 'finishMsg';
+        msg.className = 'fc-finish-message';
+        msg.textContent = 'Well done!';
+        const sub = document.createElement('div');
+        sub.className = 'fc-finish-sub';
+        sub.textContent = 'You completed the whole set.';
+        msg.appendChild(sub);
+        front.appendChild(msg);
+      }
+      document.getElementById('finishMsg').style.display = 'block';
+
+      document.getElementById('counterCurrent').textContent = cards.length;
+      document.getElementById('counterTotal').textContent = cards.length;
+      document.getElementById('prevBtn').disabled = false;
+      document.getElementById('nextBtn').disabled = true;
+
+      // Disable flip on finish card
+      document.getElementById('card').classList.remove('is-flipped');
+      isFlipped = false;
+
+      // Fire confetti
+      launchConfetti();
+      return;
+    }
+
+    // Hide finish message if going back
+    const finishMsg = document.getElementById('finishMsg');
+    if (finishMsg) finishMsg.style.display = 'none';
+    document.getElementById('audioBtn').style.display = 'flex';
+    document.querySelector('.fc-tap-hint').style.display = 'block';
+
+    const card = cards[currentIndex];
+    document.getElementById('wordText').textContent = card.word;
+    document.getElementById('translationText').textContent = card.translation;
+    document.getElementById('phoneticText').textContent = card.phonetic || '';
+    document.getElementById('exampleText').textContent = card.example || '';
+    document.getElementById('counterCurrent').textContent = currentIndex + 1;
+    document.getElementById('counterTotal').textContent = cards.length;
+    document.getElementById('prevBtn').disabled = currentIndex === 0;
+    document.getElementById('nextBtn').disabled = false;
+    if (isFlipped) {
+      isFlipped = false;
+      document.getElementById('card').classList.remove('is-flipped');
+    }
+  }
+
+  function flipCard() {
+    if (isFinishCard()) return;
+    isFlipped = !isFlipped;
+    document.getElementById('card').classList.toggle('is-flipped', isFlipped);
+  }
+
+  function nextCard() {
+    if (currentIndex >= cards.length) return;
+    currentIndex++;
+    const cardEl = document.getElementById('card');
+    cardEl.classList.remove('slide-left', 'slide-right');
+    void cardEl.offsetWidth;
+    cardEl.classList.add('slide-left');
+    renderCard();
+  }
+
+  function prevCard() {
+    if (currentIndex <= 0) return;
+    currentIndex--;
+    const cardEl = document.getElementById('card');
+    cardEl.classList.remove('slide-left', 'slide-right');
+    void cardEl.offsetWidth;
+    cardEl.classList.add('slide-right');
+    renderCard();
+  }
+
+  // ── Confetti Engine ──
+  function launchConfetti() {
+    const canvas = document.getElementById('confettiCanvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const colors = ['#0859C6', '#3b82f6', '#f59e0b', '#ef4444', '#10b981', '#8b5cf6', '#f472b6', '#06b6d4'];
+    const pieces = [];
+    const count = 150;
+
+    for (let i = 0; i < count; i++) {
+      pieces.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * -canvas.height,
+        w: Math.random() * 10 + 5,
+        h: Math.random() * 6 + 3,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        vx: (Math.random() - 0.5) * 4,
+        vy: Math.random() * 4 + 2,
+        rot: Math.random() * 360,
+        rotSpeed: (Math.random() - 0.5) * 12,
+        opacity: 1
+      });
+    }
+
+    const startTime = Date.now();
+    const duration = 3000;
+
+    function animate() {
+      const elapsed = Date.now() - startTime;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Fade out in last 800ms
+      const fadeStart = duration - 800;
+      const globalAlpha = elapsed > fadeStart ? 1 - (elapsed - fadeStart) / 800 : 1;
+
+      for (const p of pieces) {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.08;
+        p.rot += p.rotSpeed;
+
+        ctx.save();
+        ctx.globalAlpha = globalAlpha * p.opacity;
+        ctx.translate(p.x, p.y);
+        ctx.rotate((p.rot * Math.PI) / 180);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+        ctx.restore();
+      }
+
+      if (elapsed < duration) {
+        requestAnimationFrame(animate);
+      } else {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+    }
+
+    animate();
+  }
+
+  function playAudio() {
+    const word = cards[currentIndex]?.word;
+    if (!word) return;
+    const utterance = new SpeechSynthesisUtterance(word);
+    utterance.lang = 'en-GB';
+    utterance.rate = 0.9;
+    const voices = speechSynthesis.getVoices();
+    const british = voices.find(v => v.lang === 'en-GB') || voices.find(v => v.lang.startsWith('en'));
+    if (british) utterance.voice = british;
+    speechSynthesis.speak(utterance);
+  }
+
+  if (speechSynthesis.onvoiceschanged !== undefined) {
+    speechSynthesis.onvoiceschanged = () => {};
+  }
+
+  document.addEventListener('keydown', function(e) {
+    if (cards.length === 0) return;
+    if (e.key === 'ArrowRight') { nextCard(); e.preventDefault(); }
+    else if (e.key === 'ArrowLeft') { prevCard(); e.preventDefault(); }
+    else if (e.key === ' ') { flipCard(); e.preventDefault(); }
+  });
+
+  function loadDemo() {
+    document.getElementById('setTitle').textContent = 'Resilience and Growth';
+    cards = [
+      { word: 'resilience', phonetic: '/rɪˈzɪl.i.əns/', translation: 'odporność, sprężystość', example: 'Her resilience helped her overcome many challenges in life.' },
+      { word: 'to thrive', phonetic: '/θraɪv/', translation: 'prosperować, dobrze się rozwijać', example: 'Children thrive when they feel safe and supported.' },
+      { word: 'endeavour', phonetic: '/ɪnˈdev.ər/', translation: 'przedsięwzięcie, staranie', example: 'Learning a new language is a worthwhile endeavour.' },
+      { word: 'conscience', phonetic: '/ˈkɒn.ʃəns/', translation: 'sumienie', example: 'His conscience wouldn\'t let him ignore the problem.' },
+      { word: 'breadwinner', phonetic: '/ˈbred.wɪn.ər/', translation: 'żywiciel rodziny', example: 'She became the sole breadwinner after her husband lost his job.' },
+      { word: 'to stumble upon', phonetic: '/ˈstʌm.bəl əˌpɒn/', translation: 'natknąć się na coś', example: 'I stumbled upon this amazing cafe while walking through the old town.' },
+      { word: 'wholesome', phonetic: '/ˈhəʊl.səm/', translation: 'zdrowy, budujący', example: 'The film tells a wholesome story about family and forgiveness.' },
+      { word: 'to reminisce', phonetic: '/ˌrem.ɪˈnɪs/', translation: 'wspominać', example: 'They spent the evening reminiscing about their university days.' },
+    ];
+    currentIndex = 0;
+    isFlipped = false;
+    showApp();
+    renderCard();
+  }
+</script>
+
+</body>
+</html>
