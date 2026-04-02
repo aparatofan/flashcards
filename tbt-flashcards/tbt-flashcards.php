@@ -88,7 +88,7 @@ function tbt_flashcards_render( $atts ) {
     $atts = shortcode_atts( array(
         'file'   => '',
         'title'  => '',
-        'height' => '340',
+        'height' => '595',
     ), $atts, 'tbt_flashcards' );
 
     if ( empty( $atts['file'] ) ) {
