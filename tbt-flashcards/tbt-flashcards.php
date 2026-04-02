@@ -87,18 +87,23 @@ function tbt_flashcards_get_csv_url( $filename ) {
 function tbt_flashcards_render( $atts ) {
     $atts = shortcode_atts( array(
         'file'   => '',
+        'url'    => '',
         'title'  => '',
         'height' => '595',
     ), $atts, 'tbt_flashcards' );
 
-    if ( empty( $atts['file'] ) ) {
-        return '<p style="color:#c00;font-weight:bold;">TBT Flashcards error: No file specified.</p>';
-    }
-
-    $csv_url = tbt_flashcards_get_csv_url( $atts['file'] );
-
-    if ( ! $csv_url ) {
-        return '<p style="color:#c00;font-weight:bold;">Flashcard file not found: ' . esc_html( $atts['file'] ) . '</p>';
+    if ( ! empty( $atts['url'] ) ) {
+        // url takes priority over file.
+        $csv_url = esc_url_raw( $atts['url'] );
+        $filename_for_title = basename( wp_parse_url( $atts['url'], PHP_URL_PATH ) );
+    } elseif ( ! empty( $atts['file'] ) ) {
+        $csv_url = tbt_flashcards_get_csv_url( $atts['file'] );
+        if ( ! $csv_url ) {
+            return '<p style="color:#c00;font-weight:bold;">Flashcard file not found: ' . esc_html( $atts['file'] ) . '</p>';
+        }
+        $filename_for_title = $atts['file'];
+    } else {
+        return '<p style="color:#c00;font-weight:bold;">TBT Flashcards error: No file or url specified.</p>';
     }
 
     // Enqueue assets only when shortcode is used.
@@ -112,7 +117,7 @@ function tbt_flashcards_render( $atts ) {
     // Derive title from filename if not provided.
     $title = $atts['title'];
     if ( empty( $title ) ) {
-        $title = pathinfo( $atts['file'], PATHINFO_FILENAME );
+        $title = pathinfo( $filename_for_title, PATHINFO_FILENAME );
         $title = str_replace( array( '-', '_' ), ' ', $title );
         $title = ucwords( $title );
     }
