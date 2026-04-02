@@ -31,7 +31,7 @@ function tbt_flashcards_enqueue_assets() {
 
     wp_enqueue_style(
         'tbt-flashcards-google-fonts',
-        'https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@300;700&display=swap',
+        'https://fonts.googleapis.com/css2?family=Inter:wght@300;400&family=Roboto+Slab:wght@300;700&display=swap',
         array(),
         null
     );
