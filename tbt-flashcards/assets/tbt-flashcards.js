@@ -5,6 +5,9 @@
 (function () {
   'use strict';
 
+  // Track which flashcard instance is active for keyboard navigation.
+  var activeContainer = null;
+
   /**
    * Parse a single CSV line respecting quoted fields.
    */
@@ -303,8 +306,19 @@
       nextCard();
     });
 
-    // Keyboard support — only when this instance (or no specific input) is focused.
+    // Set this instance as active when clicked.
+    container.addEventListener('click', function () {
+      activeContainer = container;
+    });
+
+    // Default the first initialised instance as active.
+    if (!activeContainer) {
+      activeContainer = container;
+    }
+
+    // Keyboard support — only for the active instance.
     document.addEventListener('keydown', function (e) {
+      if (activeContainer !== container) return;
       if (cards.length === 0) return;
       // Skip if user is typing in an input/textarea.
       var tag = (e.target.tagName || '').toLowerCase();
