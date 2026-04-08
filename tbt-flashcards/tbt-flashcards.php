@@ -11,6 +11,18 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
+// Load admin functionality (custom post type, meta boxes).
+require_once plugin_dir_path( __FILE__ ) . 'admin/class-tbt-flashcards-admin.php';
+
+/**
+ * Flush rewrite rules on activation so the custom post type URLs work immediately.
+ */
+function tbt_flashcards_activate() {
+    tbt_flashcards_register_post_type();
+    flush_rewrite_rules();
+}
+register_activation_hook( __FILE__, 'tbt_flashcards_activate' );
+
 /**
  * Register the [tbt_flashcards] shortcode.
  */
@@ -86,11 +98,21 @@ function tbt_flashcards_get_csv_url( $filename ) {
  */
 function tbt_flashcards_render( $atts ) {
     $atts = shortcode_atts( array(
+        'id'     => '',
         'file'   => '',
         'url'    => '',
         'title'  => '',
         'height' => '595',
     ), $atts, 'tbt_flashcards' );
+
+    // If an id is provided, render from the flashcard set post.
+    if ( ! empty( $atts['id'] ) ) {
+        $post_id = absint( $atts['id'] );
+        if ( $post_id && 'tbt_flashcard_set' === get_post_type( $post_id ) ) {
+            return tbt_flashcards_render_from_post( $post_id );
+        }
+        return '<p style="color:#c00;font-weight:bold;">Flashcard set not found: ' . esc_html( $atts['id'] ) . '</p>';
+    }
 
     if ( ! empty( $atts['url'] ) ) {
         // url takes priority over file.
