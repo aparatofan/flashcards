@@ -43,7 +43,7 @@ function tbt_flashcards_enqueue_assets() {
 
     wp_enqueue_style(
         'tbt-flashcards-google-fonts',
-        'https://fonts.googleapis.com/css2?family=Inter:wght@300;400&family=Roboto+Slab:wght@300;700&display=swap',
+        'https://fonts.googleapis.com/css2?family=Inter:wght@300;500;700&display=swap',
         array(),
         null
     );
@@ -158,23 +158,22 @@ function tbt_flashcards_render( $atts ) {
 
         <div class="fc-header">
             <div class="fc-set-title"><?php echo esc_html( $title ); ?></div>
-            <div class="fc-counter">
-                <span class="fc-counter-current">0</span> / <span class="fc-counter-total">0</span>
-            </div>
         </div>
 
         <div class="fc-card-scene" style="height:<?php echo esc_attr( $height ); ?>px;">
             <div class="fc-card">
                 <div class="fc-card-face fc-card-front">
+                    <div class="fc-card-counter"><span class="fc-counter-current">0</span> / <span class="fc-counter-total">0</span></div>
                     <div class="fc-word">&mdash;</div>
                     <button class="fc-audio-btn" title="Listen">
                         <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
                     </button>
-                    <div class="fc-tap-hint">tap to flip</div>
                 </div>
                 <div class="fc-card-face fc-card-back">
+                    <div class="fc-card-counter"><span class="fc-counter-current">0</span> / <span class="fc-counter-total">0</span></div>
                     <div class="fc-translation">&mdash;</div>
                     <div class="fc-phonetic"></div>
+                    <div class="fc-back-divider"></div>
                     <div class="fc-example"></div>
                 </div>
             </div>
@@ -184,7 +183,6 @@ function tbt_flashcards_render( $atts ) {
             <button class="fc-nav-btn fc-prev-btn" title="Previous" disabled>
                 <svg viewBox="0 0 24 24"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6z"/></svg>
             </button>
-            <button class="fc-flip-btn">Flip</button>
             <button class="fc-nav-btn fc-next-btn" title="Next">
                 <svg viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
             </button>
