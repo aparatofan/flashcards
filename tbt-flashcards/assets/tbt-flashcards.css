@@ -1,22 +1,21 @@
 /* TBT Flashcards v1.0.0 */
 
 .tbt-flashcard-app {
-  --tbt-blue: #0859C6;
+  --tbt-blue: #0856c9;
   --tbt-blue-dark: #064a9e;
   --tbt-blue-light: #e8f0fc;
-  --tbt-blue-glow: rgba(8, 89, 198, 0.15);
+  --tbt-blue-glow: rgba(8, 86, 201, 0.15);
   --card-bg: #ffffff;
-  --card-back-bg: #f6f9ff;
   --text-primary: #1a2332;
   --text-secondary: #5a6a7e;
   --text-muted: #8a96a6;
   --border: #e2e8f0;
-  --radius: 16px;
-  --shadow: 0 4px 24px rgba(8, 89, 198, 0.08), 0 1px 3px rgba(0,0,0,0.06);
-  --shadow-hover: 0 8px 40px rgba(8, 89, 198, 0.14), 0 2px 6px rgba(0,0,0,0.08);
+  --radius: 24px;
+  --shadow: 0 25px 50px -12px rgba(0,0,0,0.15);
+  --shadow-hover: 0 25px 50px -12px rgba(0,0,0,0.22);
   --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
-  font-family: 'Roboto Slab', serif;
+  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
   font-weight: 300;
   color: var(--text-primary);
   width: 100%;
@@ -36,7 +35,7 @@
 .tbt-flashcard-app .fc-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   margin-bottom: 20px;
   padding: 0 4px;
   gap: 12px;
@@ -51,23 +50,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
-}
-
-.tbt-flashcard-app .fc-counter {
-  font-size: 14px;
-  font-weight: 300;
-  color: var(--text-secondary);
-  background: white;
-  padding: 6px 14px;
-  border-radius: 20px;
-  border: 1px solid var(--border);
-  flex-shrink: 0;
-}
-
-.tbt-flashcard-app .fc-counter-current {
-  color: var(--tbt-blue);
-  font-weight: 700;
-  font-size: 16px;
 }
 
 /* ── Card Scene ── */
@@ -110,6 +92,25 @@
   box-shadow: var(--shadow-hover);
 }
 
+/* ── Card counter (inside card, top-right) ── */
+.tbt-flashcard-app .fc-card-counter {
+  position: absolute;
+  top: 20px;
+  right: 24px;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+.tbt-flashcard-app .fc-card-front .fc-card-counter {
+  color: #c0c4cc;
+}
+
+.tbt-flashcard-app .fc-card-back .fc-card-counter {
+  color: rgba(255,255,255,0.4);
+}
+
+/* ── Front card ── */
 .tbt-flashcard-app .fc-card-front {
   background: var(--card-bg);
   border: 1px solid var(--border);
@@ -123,11 +124,12 @@
   right: 0;
   height: 4px;
   background: var(--tbt-blue);
+  border-radius: var(--radius) var(--radius) 0 0;
 }
 
 .tbt-flashcard-app .fc-word {
   font-weight: 700;
-  font-size: 36px;
+  font-size: 44px;
   color: var(--text-primary);
   text-align: center;
   line-height: 1.2;
@@ -135,12 +137,12 @@
 }
 
 .tbt-flashcard-app .fc-audio-btn {
-  margin-top: 16px;
-  width: 44px;
-  height: 44px;
+  margin-top: 20px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
-  border: 2px solid var(--tbt-blue);
-  background: white;
+  border: none;
+  background: rgba(8, 86, 201, 0.08);
   color: var(--tbt-blue);
   cursor: pointer;
   display: flex;
@@ -150,75 +152,75 @@
 }
 
 .tbt-flashcard-app .fc-audio-btn:hover {
-  background: var(--tbt-blue);
-  color: white;
+  background: rgba(8, 86, 201, 0.15);
   transform: scale(1.08);
 }
 
 .tbt-flashcard-app .fc-audio-btn svg {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   fill: currentColor;
 }
 
-.tbt-flashcard-app .fc-tap-hint {
-  position: absolute;
-  bottom: 20px;
-  font-size: 12px;
-  color: var(--text-muted);
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  font-weight: 300;
-}
-
+/* ── Back card ── */
 .tbt-flashcard-app .fc-card-back {
-  background: var(--card-back-bg);
-  border: 1px solid var(--border);
+  background: var(--tbt-blue);
+  border: none;
   transform: rotateY(180deg);
   gap: 16px;
 }
 
 .tbt-flashcard-app .fc-card-back::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: linear-gradient(90deg, var(--tbt-blue), #3b82f6);
+  display: none;
 }
 
 .tbt-flashcard-app .fc-translation {
   font-weight: 700;
-  font-size: 28px;
-  color: var(--tbt-blue);
+  font-size: 34px;
+  color: #ffffff;
   text-align: center;
   line-height: 1.3;
 }
 
 .tbt-flashcard-app .fc-phonetic {
-  font-family: 'Inter', sans-serif;
-  font-size: 24px;
-  font-weight: 300;
-  color: var(--text-secondary);
+  font-family: 'SF Mono', 'Fira Code', 'Fira Mono', 'Roboto Mono', monospace;
+  font-size: 16px;
+  font-weight: 400;
+  color: rgba(255,255,255,0.7);
   text-align: center;
+  background: rgba(0,0,0,0.15);
+  padding: 6px 16px;
+  border-radius: 8px;
+}
+
+.tbt-flashcard-app .fc-back-divider {
+  width: 80%;
+  border-top: 1px solid rgba(255,255,255,0.15);
 }
 
 .tbt-flashcard-app .fc-example {
-  font-size: 24px;
-  font-weight: 400;
-  color: var(--text-secondary);
+  font-size: 19px;
+  font-weight: 300;
+  font-style: italic;
+  color: #ffffff;
   text-align: center;
   line-height: 1.5;
   max-width: 90%;
+}
+
+.tbt-flashcard-app .fc-example:not(:empty)::before {
+  content: '\201C';
+}
+
+.tbt-flashcard-app .fc-example:not(:empty)::after {
+  content: '\201D';
 }
 
 /* ── Navigation ── */
 .tbt-flashcard-app .fc-nav {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 16px;
+  justify-content: space-between;
 }
 
 .tbt-flashcard-app .fc-nav-btn {
@@ -252,28 +254,6 @@
   width: 20px;
   height: 20px;
   fill: currentColor;
-}
-
-.tbt-flashcard-app .fc-flip-btn {
-  padding: 12px 28px;
-  border-radius: 12px;
-  border: 2px solid var(--tbt-blue);
-  background: white;
-  color: var(--tbt-blue);
-  font-family: 'Roboto Slab', serif;
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all var(--transition);
-  letter-spacing: 0.3px;
-  text-transform: uppercase;
-}
-
-.tbt-flashcard-app .fc-flip-btn:hover {
-  background: var(--tbt-blue);
-  color: white;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 16px var(--tbt-blue-glow);
 }
 
 /* ── Finish card ── */
@@ -330,11 +310,11 @@
   }
 
   .tbt-flashcard-app .fc-word {
-    font-size: 28px;
+    font-size: 32px;
   }
 
   .tbt-flashcard-app .fc-translation {
-    font-size: 22px;
+    font-size: 24px;
   }
 
   .tbt-flashcard-app .fc-card-face {
@@ -343,5 +323,11 @@
 
   .tbt-flashcard-app .fc-set-title {
     font-size: 15px;
+  }
+
+  .tbt-flashcard-app .fc-card-counter {
+    top: 14px;
+    right: 16px;
+    font-size: 12px;
   }
 }

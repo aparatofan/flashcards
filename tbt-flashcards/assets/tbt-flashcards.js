@@ -167,15 +167,14 @@
     var cardEl = container.querySelector('.fc-card');
     var wordText = container.querySelector('.fc-word');
     var audioBtn = container.querySelector('.fc-audio-btn');
-    var tapHint = container.querySelector('.fc-tap-hint');
     var translationText = container.querySelector('.fc-translation');
     var phoneticText = container.querySelector('.fc-phonetic');
     var exampleText = container.querySelector('.fc-example');
-    var counterCurrent = container.querySelector('.fc-counter-current');
-    var counterTotal = container.querySelector('.fc-counter-total');
+    var backDivider = container.querySelector('.fc-back-divider');
+    var counterCurrentEls = container.querySelectorAll('.fc-counter-current');
+    var counterTotalEls = container.querySelectorAll('.fc-counter-total');
     var prevBtn = container.querySelector('.fc-prev-btn');
     var nextBtn = container.querySelector('.fc-next-btn');
-    var flipBtn = container.querySelector('.fc-flip-btn');
     var confettiCanvas = container.querySelector('.fc-confetti');
     var finishMsg = null;
 
@@ -187,10 +186,12 @@
       if (isFinishCard()) {
         wordText.textContent = '';
         audioBtn.style.display = 'none';
-        tapHint.style.display = 'none';
         translationText.textContent = '';
         phoneticText.textContent = '';
+        phoneticText.style.display = 'none';
         exampleText.textContent = '';
+        exampleText.style.display = 'none';
+        if (backDivider) backDivider.style.display = 'none';
 
         if (!finishMsg) {
           finishMsg = document.createElement('div');
@@ -204,8 +205,8 @@
         }
         finishMsg.style.display = 'block';
 
-        counterCurrent.textContent = cards.length;
-        counterTotal.textContent = cards.length;
+        for (var ci = 0; ci < counterCurrentEls.length; ci++) counterCurrentEls[ci].textContent = cards.length;
+        for (var ti = 0; ti < counterTotalEls.length; ti++) counterTotalEls[ti].textContent = cards.length;
         prevBtn.disabled = false;
         nextBtn.disabled = true;
 
@@ -222,15 +223,17 @@
       // Hide finish message when going back.
       if (finishMsg) finishMsg.style.display = 'none';
       audioBtn.style.display = 'flex';
-      tapHint.style.display = 'block';
 
       var card = cards[currentIndex];
       wordText.textContent = card.word;
       translationText.textContent = card.translation;
       phoneticText.textContent = card.phonetic || '';
+      phoneticText.style.display = card.phonetic ? '' : 'none';
       exampleText.textContent = card.example || '';
-      counterCurrent.textContent = currentIndex + 1;
-      counterTotal.textContent = cards.length;
+      exampleText.style.display = card.example ? '' : 'none';
+      if (backDivider) backDivider.style.display = card.example ? '' : 'none';
+      for (var ci = 0; ci < counterCurrentEls.length; ci++) counterCurrentEls[ci].textContent = currentIndex + 1;
+      for (var ti = 0; ti < counterTotalEls.length; ti++) counterTotalEls[ti].textContent = cards.length;
       prevBtn.disabled = currentIndex === 0;
       nextBtn.disabled = false;
 
@@ -292,10 +295,6 @@
 
     audioBtn.addEventListener('click', function (e) {
       playAudio(e);
-    });
-
-    flipBtn.addEventListener('click', function () {
-      flipCard();
     });
 
     prevBtn.addEventListener('click', function () {
