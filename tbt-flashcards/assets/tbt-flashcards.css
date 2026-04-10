@@ -149,6 +149,7 @@
   align-items: center;
   justify-content: center;
   transition: all var(--transition);
+  position: relative;
 }
 
 .tbt-flashcard-app .fc-audio-btn:hover {
@@ -160,6 +161,43 @@
   width: 22px;
   height: 22px;
   fill: currentColor;
+}
+
+/* Loading spinner while the TTS proxy request is in flight. */
+.tbt-flashcard-app .fc-audio-btn.is-loading {
+  cursor: wait;
+}
+
+.tbt-flashcard-app .fc-audio-btn.is-loading svg {
+  opacity: 0;
+}
+
+.tbt-flashcard-app .fc-audio-btn.is-loading::after {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid rgba(8, 86, 201, 0.25);
+  border-top-color: var(--tbt-blue);
+  animation: tbt-fc-spin 0.8s linear infinite;
+}
+
+/* Transient error state when the proxy call fails. */
+.tbt-flashcard-app .fc-audio-btn.has-error {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+  animation: tbt-fc-shake 0.4s ease-in-out;
+}
+
+@keyframes tbt-fc-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes tbt-fc-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-3px); }
+  75% { transform: translateX(3px); }
 }
 
 /* ── Back card ── */

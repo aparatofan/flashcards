@@ -8,6 +8,57 @@
   // Track which flashcard instance is active for keyboard navigation.
   var activeContainer = null;
 
+  // Session-wide in-memory cache of text → Blob URL for ElevenLabs audio.
+  // Shared across all flashcard instances on the page so the same phrase is
+  // only fetched from the proxy once per page load.
+  var audioBlobCache = typeof Map !== 'undefined' ? new Map() : null;
+  // Fallback simple object cache for very old browsers (no Map).
+  var audioBlobCacheFallback = {};
+
+  function getCachedBlobUrl(text) {
+    if (audioBlobCache) return audioBlobCache.get(text);
+    return audioBlobCacheFallback[text];
+  }
+
+  function setCachedBlobUrl(text, url) {
+    if (audioBlobCache) {
+      audioBlobCache.set(text, url);
+    } else {
+      audioBlobCacheFallback[text] = url;
+    }
+  }
+
+  /**
+   * Web Speech API fallback — used if the ElevenLabs proxy fails for any
+   * reason (network error, API key missing, quota exceeded). We keep this
+   * around so the audio button never silently does nothing.
+   */
+  function speakWithWebSpeech(word) {
+    if (typeof speechSynthesis === 'undefined' ||
+        typeof SpeechSynthesisUtterance === 'undefined') {
+      return;
+    }
+    try {
+      var utterance = new SpeechSynthesisUtterance(word);
+      utterance.lang = 'en-GB';
+      utterance.rate = 0.9;
+      var voices = speechSynthesis.getVoices();
+      var british = null;
+      for (var i = 0; i < voices.length; i++) {
+        if (voices[i].lang === 'en-GB') { british = voices[i]; break; }
+      }
+      if (!british) {
+        for (var j = 0; j < voices.length; j++) {
+          if (voices[j].lang.indexOf('en') === 0) { british = voices[j]; break; }
+        }
+      }
+      if (british) utterance.voice = british;
+      speechSynthesis.speak(utterance);
+    } catch (err) {
+      console.error('TBT Flashcards Web Speech fallback:', err);
+    }
+  }
+
   /**
    * Parse a single CSV line respecting quoted fields.
    */
@@ -267,25 +318,113 @@
       renderCard();
     }
 
+    // Currently playing Audio element, so a new click cancels the previous one.
+    var currentAudio = null;
+    // Timer used to auto-clear the transient error state on the audio button.
+    var audioErrorTimer = null;
+
+    function setAudioLoading(isLoading) {
+      if (isLoading) {
+        audioBtn.classList.add('is-loading');
+        audioBtn.setAttribute('aria-busy', 'true');
+      } else {
+        audioBtn.classList.remove('is-loading');
+        audioBtn.removeAttribute('aria-busy');
+      }
+    }
+
+    function showAudioError() {
+      audioBtn.classList.add('has-error');
+      if (audioErrorTimer) clearTimeout(audioErrorTimer);
+      audioErrorTimer = setTimeout(function () {
+        audioBtn.classList.remove('has-error');
+        audioErrorTimer = null;
+      }, 1800);
+    }
+
+    function playBlobUrl(url, word) {
+      try {
+        if (currentAudio) {
+          try { currentAudio.pause(); } catch (_) {}
+        }
+        var audio = new Audio(url);
+        currentAudio = audio;
+        var playPromise = audio.play();
+        if (playPromise && typeof playPromise.catch === 'function') {
+          playPromise.catch(function (err) {
+            console.warn('TBT Flashcards audio playback failed:', err);
+            speakWithWebSpeech(word);
+          });
+        }
+      } catch (err) {
+        console.warn('TBT Flashcards audio playback exception:', err);
+        speakWithWebSpeech(word);
+      }
+    }
+
     function playAudio(e) {
       if (e) e.stopPropagation();
       var word = cards[currentIndex] ? cards[currentIndex].word : null;
       if (!word) return;
-      var utterance = new SpeechSynthesisUtterance(word);
-      utterance.lang = 'en-GB';
-      utterance.rate = 0.9;
-      var voices = speechSynthesis.getVoices();
-      var british = null;
-      for (var i = 0; i < voices.length; i++) {
-        if (voices[i].lang === 'en-GB') { british = voices[i]; break; }
+
+      // 1) In-memory Blob URL cache — instant replay.
+      var cachedUrl = getCachedBlobUrl(word);
+      if (cachedUrl) {
+        playBlobUrl(cachedUrl, word);
+        return;
       }
-      if (!british) {
-        for (var j = 0; j < voices.length; j++) {
-          if (voices[j].lang.indexOf('en') === 0) { british = voices[j]; break; }
-        }
+
+      // 2) No proxy configured on the page → straight to fallback.
+      if (typeof tbtFcAjax === 'undefined' || !tbtFcAjax || !tbtFcAjax.ajaxurl) {
+        speakWithWebSpeech(word);
+        return;
       }
-      if (british) utterance.voice = british;
-      speechSynthesis.speak(utterance);
+
+      // 3) Fetch from the WordPress AJAX proxy.
+      setAudioLoading(true);
+
+      var body = new URLSearchParams();
+      body.append('action', 'tbt_fc_tts');
+      body.append('nonce', tbtFcAjax.nonce);
+      body.append('text', word);
+
+      fetch(tbtFcAjax.ajaxurl, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+        body: body.toString()
+      })
+        .then(function (response) {
+          var ct = response.headers.get('Content-Type') || '';
+          if (!response.ok || ct.indexOf('audio/') !== 0) {
+            // Likely a JSON error payload from the proxy.
+            return response.text().then(function (text) {
+              var msg = 'HTTP ' + response.status;
+              try {
+                var parsed = JSON.parse(text);
+                if (parsed && parsed.error) msg = parsed.error;
+              } catch (_) {}
+              throw new Error(msg);
+            });
+          }
+          return response.blob();
+        })
+        .then(function (blob) {
+          if (!blob || blob.size === 0) throw new Error('Empty audio response');
+          var url = URL.createObjectURL(blob);
+          setCachedBlobUrl(word, url);
+          playBlobUrl(url, word);
+        })
+        .catch(function (err) {
+          console.warn('TBT Flashcards TTS proxy failed:', err && err.message ? err.message : err);
+          showAudioError();
+          // Last-resort fallback so the button never does nothing.
+          speakWithWebSpeech(word);
+        })
+        .then(function () {
+          // Finally-ish: clear the spinner in both success and failure paths.
+          setAudioLoading(false);
+        });
     }
 
     // Bind events.

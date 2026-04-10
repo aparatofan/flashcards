@@ -11,6 +11,9 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
+// ElevenLabs voice ID used for all TTS requests (hardcoded — not user-configurable).
+define( 'TBT_FC_ELEVENLABS_VOICE_ID', 'dPKFsZN0BnPRUfVI2DUW' );
+
 // Load admin functionality (custom post type, meta boxes).
 require_once plugin_dir_path( __FILE__ ) . 'admin/class-tbt-flashcards-admin.php';
 
@@ -62,7 +65,208 @@ function tbt_flashcards_enqueue_assets() {
         '1.0.0',
         true
     );
+
+    // Pass AJAX endpoint and nonce to the JS so it can call the TTS proxy.
+    wp_localize_script( 'tbt-flashcards', 'tbtFcAjax', array(
+        'ajaxurl' => admin_url( 'admin-ajax.php' ),
+        'nonce'   => wp_create_nonce( 'tbt_fc_tts_nonce' ),
+    ) );
 }
+
+/**
+ * Register the Settings → TBT Flashcards admin page.
+ */
+function tbt_fc_register_settings_page() {
+    add_options_page(
+        __( 'TBT Flashcards', 'tbt-flashcards' ),
+        __( 'TBT Flashcards', 'tbt-flashcards' ),
+        'manage_options',
+        'tbt-flashcards',
+        'tbt_fc_render_settings_page'
+    );
+}
+add_action( 'admin_menu', 'tbt_fc_register_settings_page' );
+
+/**
+ * Register the ElevenLabs API key option with the Settings API.
+ */
+function tbt_fc_register_settings() {
+    register_setting(
+        'tbt_fc_settings',
+        'tbt_fc_elevenlabs_api_key',
+        array(
+            'type'              => 'string',
+            'sanitize_callback' => 'sanitize_text_field',
+            'default'           => '',
+        )
+    );
+}
+add_action( 'admin_init', 'tbt_fc_register_settings' );
+
+/**
+ * Render the TBT Flashcards settings page (API key field only).
+ */
+function tbt_fc_render_settings_page() {
+    if ( ! current_user_can( 'manage_options' ) ) {
+        return;
+    }
+    $api_key = get_option( 'tbt_fc_elevenlabs_api_key', '' );
+    ?>
+    <div class="wrap">
+        <h1><?php esc_html_e( 'TBT Flashcards', 'tbt-flashcards' ); ?></h1>
+        <form method="post" action="options.php">
+            <?php settings_fields( 'tbt_fc_settings' ); ?>
+            <table class="form-table" role="presentation">
+                <tr>
+                    <th scope="row">
+                        <label for="tbt_fc_elevenlabs_api_key">
+                            <?php esc_html_e( 'ElevenLabs API Key', 'tbt-flashcards' ); ?>
+                        </label>
+                    </th>
+                    <td>
+                        <input type="password"
+                               id="tbt_fc_elevenlabs_api_key"
+                               name="tbt_fc_elevenlabs_api_key"
+                               value="<?php echo esc_attr( $api_key ); ?>"
+                               class="regular-text"
+                               autocomplete="off" />
+                        <p class="description">
+                            <?php esc_html_e( 'Enter your ElevenLabs API key. Get one at elevenlabs.io', 'tbt-flashcards' ); ?>
+                        </p>
+                    </td>
+                </tr>
+            </table>
+            <?php submit_button(); ?>
+        </form>
+    </div>
+    <?php
+}
+
+/**
+ * Resolve (and create on first use) the audio cache directory.
+ *
+ * @return string|false Absolute path to the cache dir, or false on failure.
+ */
+function tbt_fc_get_audio_cache_dir() {
+    $uploads = wp_upload_dir();
+    if ( ! empty( $uploads['error'] ) ) {
+        return false;
+    }
+    $dir = trailingslashit( $uploads['basedir'] ) . 'tbt-flashcards-audio';
+    if ( ! file_exists( $dir ) ) {
+        if ( ! wp_mkdir_p( $dir ) ) {
+            return false;
+        }
+    }
+    return $dir;
+}
+
+/**
+ * Stream the given MP3 bytes to the browser as an audio/mpeg response.
+ * Terminates the request.
+ *
+ * @param string $body Raw MP3 binary.
+ * @param string $cache_status HIT or MISS, for debugging.
+ */
+function tbt_fc_send_audio_response( $body, $cache_status ) {
+    nocache_headers();
+    header( 'Content-Type: audio/mpeg' );
+    header( 'Content-Length: ' . strlen( $body ) );
+    header( 'X-TBT-FC-Cache: ' . $cache_status );
+    echo $body; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- binary audio output.
+    // Use die() directly so wp_ajax doesn't append a trailing "0" to the binary stream.
+    die();
+}
+
+/**
+ * AJAX proxy: receive text from the browser, call ElevenLabs, return MP3.
+ * Caches every unique phrase on disk so each one is generated only once.
+ */
+function tbt_fc_tts_proxy() {
+    // Nonce check.
+    $nonce = isset( $_POST['nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['nonce'] ) ) : '';
+    if ( ! wp_verify_nonce( $nonce, 'tbt_fc_tts_nonce' ) ) {
+        wp_send_json( array( 'error' => 'Invalid nonce' ), 403 );
+    }
+
+    // Text validation.
+    $text = isset( $_POST['text'] ) ? wp_unslash( $_POST['text'] ) : '';
+    $text = trim( sanitize_text_field( $text ) );
+
+    if ( '' === $text ) {
+        wp_send_json( array( 'error' => 'Empty text' ), 400 );
+    }
+    if ( strlen( $text ) > 200 ) {
+        wp_send_json( array( 'error' => 'Text too long (max 200 characters)' ), 400 );
+    }
+
+    // API key must be configured.
+    $api_key = get_option( 'tbt_fc_elevenlabs_api_key', '' );
+    if ( empty( $api_key ) ) {
+        wp_send_json( array( 'error' => 'TTS not configured' ), 503 );
+    }
+
+    // Cache lookup.
+    $cache_dir = tbt_fc_get_audio_cache_dir();
+    $cache_key = md5( $text );
+    $cache_file = $cache_dir ? trailingslashit( $cache_dir ) . $cache_key . '.mp3' : '';
+
+    if ( $cache_file && file_exists( $cache_file ) ) {
+        $cached = file_get_contents( $cache_file );
+        if ( false !== $cached && strlen( $cached ) > 0 ) {
+            tbt_fc_send_audio_response( $cached, 'HIT' );
+        }
+    }
+
+    // Cache miss — call ElevenLabs.
+    $response = wp_remote_post(
+        'https://api.elevenlabs.io/v1/text-to-speech/' . TBT_FC_ELEVENLABS_VOICE_ID,
+        array(
+            'timeout' => 30,
+            'headers' => array(
+                'xi-api-key'   => $api_key,
+                'Content-Type' => 'application/json',
+                'Accept'       => 'audio/mpeg',
+            ),
+            'body'    => wp_json_encode( array(
+                'text'           => $text,
+                'model_id'       => 'eleven_multilingual_v2',
+                'voice_settings' => array(
+                    'stability'         => 0.6,
+                    'similarity_boost'  => 0.75,
+                    'style'             => 0.0,
+                    'use_speaker_boost' => true,
+                ),
+            ) ),
+        )
+    );
+
+    if ( is_wp_error( $response ) ) {
+        wp_send_json(
+            array( 'error' => 'Upstream request failed: ' . $response->get_error_message() ),
+            502
+        );
+    }
+
+    $code = (int) wp_remote_retrieve_response_code( $response );
+    $body = wp_remote_retrieve_body( $response );
+
+    if ( 200 !== $code || '' === $body ) {
+        wp_send_json(
+            array( 'error' => 'ElevenLabs returned status ' . $code ),
+            $code ? $code : 502
+        );
+    }
+
+    // Save to cache (best effort — if the write fails we still serve the audio).
+    if ( $cache_file ) {
+        @file_put_contents( $cache_file, $body ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+    }
+
+    tbt_fc_send_audio_response( $body, 'MISS' );
+}
+add_action( 'wp_ajax_tbt_fc_tts', 'tbt_fc_tts_proxy' );
+add_action( 'wp_ajax_nopriv_tbt_fc_tts', 'tbt_fc_tts_proxy' );
 
 /**
  * Look up a CSV attachment in the Media Library by filename.
