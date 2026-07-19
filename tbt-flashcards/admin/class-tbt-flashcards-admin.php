@@ -30,7 +30,9 @@ function tbt_flashcards_register_post_type() {
         ),
         'public'       => true,
         'has_archive'  => true,
-        'show_in_menu' => true,
+        // Nest under the TBT hub menu when it is active; fall back to a
+        // top-level menu of its own when the hub is deactivated.
+        'show_in_menu' => defined( 'TBT_HUB_SLUG' ) ? TBT_HUB_SLUG : true,
         'menu_icon'    => 'dashicons-welcome-learn-more',
         'supports'     => array( 'title' ),
         'rewrite'      => array( 'slug' => 'flashcards' ),
