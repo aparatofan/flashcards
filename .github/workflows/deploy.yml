@@ -21,7 +21,7 @@ jobs:
           protocol: ftps
           local-dir: ./tbt-flashcards/
           server-dir: /tbt-flashcards/
-          dry-run: true
+          dry-run: false
           timeout: 120000
           exclude: |
             **/.git*
