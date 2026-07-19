@@ -83,18 +83,56 @@ function tbt_flashcards_enqueue_assets() {
 }
 
 /**
- * Register the Settings → TBT Flashcards admin page.
+ * Register the flashcards settings page.
+ *
+ * Under the TBT hub (as "TBT Flashcards Settings") when the hub is active;
+ * otherwise a top-level menu of its own so settings are never unreachable.
  */
 function tbt_fc_register_settings_page() {
-    add_options_page(
-        __( 'TBT Flashcards', 'tbt-flashcards' ),
-        __( 'TBT Flashcards', 'tbt-flashcards' ),
-        'manage_options',
-        'tbt-flashcards',
-        'tbt_fc_render_settings_page'
-    );
+    if ( defined( 'TBT_HUB_SLUG' ) ) {
+        add_submenu_page(
+            TBT_HUB_SLUG,
+            __( 'TBT Flashcards Settings', 'tbt-flashcards' ),
+            __( 'TBT Flashcards Settings', 'tbt-flashcards' ),
+            'manage_options',
+            'tbt-flashcards',
+            'tbt_fc_render_settings_page'
+        );
+    } else {
+        add_menu_page(
+            __( 'TBT Flashcards Settings', 'tbt-flashcards' ),
+            __( 'TBT Flashcards Settings', 'tbt-flashcards' ),
+            'manage_options',
+            'tbt-flashcards',
+            'tbt_fc_render_settings_page',
+            'dashicons-welcome-learn-more',
+            3
+        );
+    }
 }
 add_action( 'admin_menu', 'tbt_fc_register_settings_page' );
+
+/**
+ * Register this plugin on the TBT Hub Overview page.
+ *
+ * The card links to the Flashcard Sets list (the custom post type where the
+ * actual content is authored) via the `url` key, rather than the settings
+ * page above.
+ *
+ * @param array $items Existing hub items.
+ * @return array
+ */
+function tbt_fc_register_hub_item( $items ) {
+    $items[] = array(
+        'slug'        => 'tbt-flashcards',
+        'title'       => 'TBT Flashcards',
+        'description' => 'Interactive flashcard widget with ElevenLabs audio for lesson vocabulary.',
+        'capability'  => 'edit_posts',
+        'url'         => admin_url( 'edit.php?post_type=tbt_flashcard_set' ),
+    );
+    return $items;
+}
+add_filter( 'tbt_hub_items', 'tbt_fc_register_hub_item' );
 
 /**
  * Register the ElevenLabs API key option with the Settings API.
