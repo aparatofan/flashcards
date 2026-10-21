@@ -71,6 +71,9 @@ function tbt_flashcards_settings_meta_box( $post ) {
         $height = 595;
     }
     ?>
+    <?php if ( tbt_fc_is_editor_set( $post->ID ) ) : ?>
+    <p><?php esc_html_e( "This set's cards are managed in the front-end editor. The CSV fields below are kept for reference only.", 'tbt-flashcards' ); ?></p>
+    <?php endif; ?>
     <table class="form-table">
         <tr>
             <th><label for="tbt_csv_file"><?php esc_html_e( 'CSV Filename', 'tbt-flashcards' ); ?></label></th>
@@ -169,7 +172,10 @@ add_filter( 'manage_tbt_flashcard_set_posts_columns', 'tbt_flashcards_admin_colu
  * @param int    $post_id The post ID.
  */
 function tbt_flashcards_admin_column_content( $column, $post_id ) {
-    if ( 'tbt_csv_source' === $column ) {
+    if ( 'tbt_csv_source' === $column && tbt_fc_is_editor_set( $post_id ) ) {
+        /* translators: %d = number of cards */
+        echo esc_html( sprintf( __( 'Editor · %d cards', 'tbt-flashcards' ), tbt_fc_card_count( $post_id ) ) );
+    } elseif ( 'tbt_csv_source' === $column ) {
         $csv_url  = get_post_meta( $post_id, '_tbt_csv_url', true );
         $csv_file = get_post_meta( $post_id, '_tbt_csv_file', true );
         if ( ! empty( $csv_url ) ) {
@@ -188,30 +194,42 @@ add_action( 'manage_tbt_flashcard_set_posts_custom_column', 'tbt_flashcards_admi
 /**
  * Render flashcards on single flashcard set posts.
  *
+ * Since 2.0 the set's own URL uses templates/single-deck.php, which renders
+ * the deck itself and never calls the_content, so this filter no longer adds
+ * anything. It is kept as a pass-through for compatibility with code that
+ * references it.
+ *
  * @param string $content The post content.
  * @return string Modified content.
  */
 function tbt_flashcards_filter_content( $content ) {
-    if ( ! is_singular( 'tbt_flashcard_set' ) || ! in_the_loop() || ! is_main_query() ) {
-        return $content;
-    }
-
-    $post_id = get_the_ID();
-
-    return tbt_flashcards_render_from_post( $post_id );
+    return $content;
 }
 add_filter( 'the_content', 'tbt_flashcards_filter_content' );
 
 /**
  * Build shortcode output from a flashcard set post.
  *
- * @param int $post_id The flashcard set post ID.
+ * Editor sets load their cards from the public REST route; legacy sets keep
+ * the 1.0.0 CSV path untouched.
+ *
+ * @param int    $post_id The flashcard set post ID.
+ * @param string $mode    'inline' (lessons) or 'deck' (the set's own page).
  * @return string Shortcode HTML or empty string.
  */
-function tbt_flashcards_render_from_post( $post_id ) {
+function tbt_flashcards_render_from_post( $post_id, $mode = 'inline' ) {
     $csv_url  = get_post_meta( $post_id, '_tbt_csv_url', true );
     $csv_file = get_post_meta( $post_id, '_tbt_csv_file', true );
     $height   = get_post_meta( $post_id, '_tbt_height', true );
+
+    if ( tbt_fc_is_editor_set( $post_id ) ) {
+        return tbt_flashcards_render_app( array(
+            'cards_url' => tbt_fc_cards_rest_url( $post_id ),
+            'title'     => get_the_title( $post_id ),
+            'height'    => ! empty( $height ) ? $height : '595',
+            'mode'      => $mode,
+        ) );
+    }
 
     $atts = array();
 
@@ -229,5 +247,5 @@ function tbt_flashcards_render_from_post( $post_id ) {
         $atts['height'] = $height;
     }
 
-    return tbt_flashcards_render( $atts );
+    return tbt_flashcards_render_csv( $atts, $mode );
 }

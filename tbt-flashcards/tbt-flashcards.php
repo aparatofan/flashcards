@@ -2,7 +2,7 @@
 /**
  * Plugin Name: TBT Flashcards
  * Description: Interactive flashcard widget for The Blue Tree English lessons.
- * Version: 1.0.0
+ * Version: 2.0.0
  * Author: Mariusz Mirecki
  * Text Domain: tbt-flashcards
  */
@@ -10,6 +10,10 @@
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
+
+define( 'TBT_FC_VERSION', '2.0.0' );
+define( 'TBT_FC_DIR', plugin_dir_path( __FILE__ ) );
+define( 'TBT_FC_URL', plugin_dir_url( __FILE__ ) );
 
 // ElevenLabs voice ID used for all TTS requests (hardcoded — not user-configurable).
 define( 'TBT_FC_ELEVENLABS_VOICE_ID', 'dPKFsZN0BnPRUfVI2DUW' );
@@ -24,7 +28,14 @@ define( 'TBT_FC_ELEVENLABS_MODEL_ID', 'eleven_turbo_v2_5' );
 define( 'TBT_FC_ELEVENLABS_LANGUAGE_CODE', 'en' );
 
 // Load admin functionality (custom post type, meta boxes).
-require_once plugin_dir_path( __FILE__ ) . 'admin/class-tbt-flashcards-admin.php';
+require_once TBT_FC_DIR . 'admin/class-tbt-flashcards-admin.php';
+
+// 2.0: access gate, card model, AI generation, REST routes, teacher tools.
+require_once TBT_FC_DIR . 'includes/access.php';
+require_once TBT_FC_DIR . 'includes/cards.php';
+require_once TBT_FC_DIR . 'includes/openai.php';
+require_once TBT_FC_DIR . 'includes/rest.php';
+require_once TBT_FC_DIR . 'includes/tools.php';
 
 /**
  * Flush rewrite rules on activation so the custom post type URLs work immediately.
@@ -53,25 +64,21 @@ function tbt_flashcards_enqueue_assets() {
     }
     $enqueued = true;
 
-    wp_enqueue_style(
-        'tbt-flashcards-google-fonts',
-        'https://fonts.googleapis.com/css2?family=Inter:wght@300;500;700&display=swap',
-        array(),
-        null
-    );
+    tbt_fc_register_fonts();
+    wp_enqueue_style( 'tbt-flashcards-google-fonts' );
 
     wp_enqueue_style(
         'tbt-flashcards',
-        plugin_dir_url( __FILE__ ) . 'assets/tbt-flashcards.css',
-        array(),
-        '1.0.0'
+        TBT_FC_URL . 'assets/tbt-flashcards.css',
+        array( 'tbt-flashcards-google-fonts' ),
+        TBT_FC_VERSION
     );
 
     wp_enqueue_script(
         'tbt-flashcards',
-        plugin_dir_url( __FILE__ ) . 'assets/tbt-flashcards.js',
+        TBT_FC_URL . 'assets/tbt-flashcards.js',
         array(),
-        '1.0.0',
+        TBT_FC_VERSION,
         true
     );
 
@@ -80,6 +87,21 @@ function tbt_flashcards_enqueue_assets() {
         'ajaxurl' => admin_url( 'admin-ajax.php' ),
         'nonce'   => wp_create_nonce( 'tbt_fc_tts_nonce' ),
     ) );
+}
+
+/**
+ * Register the one Google Fonts request shared by the player and the tools.
+ */
+function tbt_fc_register_fonts() {
+    if ( wp_style_is( 'tbt-flashcards-google-fonts', 'registered' ) ) {
+        return;
+    }
+    wp_register_style(
+        'tbt-flashcards-google-fonts',
+        'https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&family=Roboto+Mono:wght@500;700&family=Roboto+Slab:wght@400;500;600;700&display=swap',
+        array(),
+        null
+    );
 }
 
 /**
@@ -126,7 +148,7 @@ function tbt_fc_register_hub_item( $items ) {
     $items[] = array(
         'slug'        => 'tbt-flashcards',
         'title'       => 'TBT Flashcards',
-        'description' => 'Interactive flashcard widget with ElevenLabs audio for lesson vocabulary.',
+        'description' => 'Lesson flashcards with AI-filled cards and ElevenLabs audio.',
         'capability'  => 'edit_posts',
         'url'         => admin_url( 'edit.php?post_type=tbt_flashcard_set' ),
     );
@@ -224,6 +246,20 @@ function tbt_fc_render_settings_page() {
             </table>
             <?php submit_button(); ?>
         </form>
+
+        <h2><?php esc_html_e( 'AI card generation', 'tbt-flashcards' ); ?></h2>
+        <p>
+            <?php
+            if ( '' !== tbt_fc_openai_api_key() ) {
+                esc_html_e( 'OpenAI API key detected', 'tbt-flashcards' );
+            } else {
+                esc_html_e( 'OpenAI API key not detected', 'tbt-flashcards' );
+            }
+            ?>
+        </p>
+        <p class="description">
+            <?php esc_html_e( 'The key is read from wp-config.php (TBT_FLASHCARDS_OPENAI_API_KEY, TBT_MATCHING_GAMES_OPENAI_API_KEY or OPENAI_API_KEY), the same key TBT Matching Games uses.', 'tbt-flashcards' ); ?>
+        </p>
 
         <hr />
 
@@ -427,10 +463,35 @@ function tbt_flashcards_render( $atts ) {
     if ( ! empty( $atts['id'] ) ) {
         $post_id = absint( $atts['id'] );
         if ( $post_id && 'tbt_flashcard_set' === get_post_type( $post_id ) ) {
-            return tbt_flashcards_render_from_post( $post_id );
+            // Only published sets play in lessons, so a trashed or drafted
+            // set disappears for visitors; editors still see the notice.
+            if ( 'publish' === get_post_status( $post_id ) ) {
+                return tbt_flashcards_render_from_post( $post_id );
+            }
+            if ( ! current_user_can( 'edit_posts' ) ) {
+                return '';
+            }
         }
         return '<p style="color:#c00;font-weight:bold;">Flashcard set not found: ' . esc_html( $atts['id'] ) . '</p>';
     }
+
+    return tbt_flashcards_render_csv( $atts );
+}
+
+/**
+ * Render a CSV-backed widget from `url` or `file` (the 1.0.0 behaviour).
+ *
+ * @param array  $atts Attributes: file, url, title, height.
+ * @param string $mode 'inline' (lessons) or 'deck' (the set's own page).
+ * @return string HTML output.
+ */
+function tbt_flashcards_render_csv( $atts, $mode = 'inline' ) {
+    $atts = wp_parse_args( $atts, array(
+        'file'   => '',
+        'url'    => '',
+        'title'  => '',
+        'height' => '595',
+    ) );
 
     if ( ! empty( $atts['url'] ) ) {
         // url takes priority over file.
@@ -446,14 +507,6 @@ function tbt_flashcards_render( $atts ) {
         return '<p style="color:#c00;font-weight:bold;">TBT Flashcards error: No file or url specified.</p>';
     }
 
-    // Enqueue assets only when shortcode is used.
-    tbt_flashcards_enqueue_assets();
-
-    // Generate unique instance ID.
-    static $instance_counter = 0;
-    $instance_counter++;
-    $instance_id = 'tbt-fc-' . $instance_counter;
-
     // Derive title from filename if not provided.
     $title = $atts['title'];
     if ( empty( $title ) ) {
@@ -462,23 +515,65 @@ function tbt_flashcards_render( $atts ) {
         $title = ucwords( $title );
     }
 
-    $height = intval( $atts['height'] );
+    return tbt_flashcards_render_app( array(
+        'csv_url' => $csv_url,
+        'title'   => $title,
+        'height'  => $atts['height'],
+        'mode'    => $mode,
+    ) );
+}
+
+/**
+ * Print the widget markup.
+ *
+ * Exactly one card source is set: `csv_url` (legacy sets and file/url
+ * shortcodes, parsed in the browser as in 1.0.0) or `cards_url` (editor sets,
+ * served by the public REST route).
+ *
+ * @param array $args csv_url, cards_url, title, height, mode.
+ * @return string HTML output.
+ */
+function tbt_flashcards_render_app( $args ) {
+    $args = wp_parse_args( $args, array(
+        'csv_url'   => '',
+        'cards_url' => '',
+        'title'     => '',
+        'height'    => '595',
+        'mode'      => 'inline',
+    ) );
+
+    // Enqueue assets only when shortcode is used.
+    tbt_flashcards_enqueue_assets();
+
+    // Generate unique instance ID.
+    static $instance_counter = 0;
+    $instance_counter++;
+    $instance_id = 'tbt-fc-' . $instance_counter;
+
+    $title   = $args['title'];
+    $is_deck = 'deck' === $args['mode'];
+
+    $height = intval( $args['height'] );
     if ( $height < 100 ) {
         $height = 340;
     }
 
     ob_start();
     ?>
-    <div class="tbt-flashcard-app" id="<?php echo esc_attr( $instance_id ); ?>"
-         data-csv-url="<?php echo esc_url( $csv_url ); ?>"
+    <div class="tbt-flashcard-app<?php echo $is_deck ? ' is-deck' : ''; ?>" id="<?php echo esc_attr( $instance_id ); ?>"
+         <?php if ( $args['cards_url'] ) : ?>data-cards-url="<?php echo esc_url( $args['cards_url'] ); ?>"<?php else : ?>data-csv-url="<?php echo esc_url( $args['csv_url'] ); ?>"<?php endif; ?>
          data-title="<?php echo esc_attr( $title ); ?>"
-         data-height="<?php echo esc_attr( $height ); ?>">
+         data-height="<?php echo esc_attr( $height ); ?>"
+         data-mode="<?php echo esc_attr( $is_deck ? 'deck' : 'inline' ); ?>">
 
         <div class="fc-header">
             <div class="fc-set-title"><?php echo esc_html( $title ); ?></div>
+            <?php if ( $is_deck ) : ?>
+                <div class="fc-deck-brand">THE BLUE TREE</div>
+            <?php endif; ?>
         </div>
 
-        <div class="fc-card-scene" style="height:<?php echo esc_attr( $height ); ?>px;">
+        <div class="fc-card-scene"<?php echo $is_deck ? '' : ' style="height:' . esc_attr( $height ) . 'px;"'; ?>>
             <div class="fc-card">
                 <div class="fc-card-face fc-card-front">
                     <div class="fc-card-counter"><span class="fc-counter-current">0</span> / <span class="fc-counter-total">0</span></div>
@@ -486,6 +581,7 @@ function tbt_flashcards_render( $atts ) {
                     <button class="fc-audio-btn" title="Listen">
                         <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
                     </button>
+                    <div class="fc-hint">Click to flip</div>
                 </div>
                 <div class="fc-card-face fc-card-back">
                     <div class="fc-card-counter"><span class="fc-counter-current">0</span> / <span class="fc-counter-total">0</span></div>
@@ -501,13 +597,63 @@ function tbt_flashcards_render( $atts ) {
             <button class="fc-nav-btn fc-prev-btn" title="Previous" disabled>
                 <svg viewBox="0 0 24 24"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6z"/></svg>
             </button>
+            <div class="fc-progress" aria-live="polite">0 / 0</div>
             <button class="fc-nav-btn fc-next-btn" title="Next">
                 <svg viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
             </button>
         </div>
+
+        <?php if ( $is_deck ) : ?>
+            <div class="fc-deck-bar" aria-hidden="true"><span class="fc-deck-bar-fill"></span></div>
+        <?php endif; ?>
 
         <canvas class="fc-confetti"></canvas>
     </div>
     <?php
     return ob_get_clean();
 }
+
+/**
+ * Use the bare deck template for a single flashcard set.
+ *
+ * Themes may override it at tbt-flashcards/single-deck.php.
+ *
+ * @param string $template Template path.
+ * @return string
+ */
+function tbt_fc_deck_template_include( $template ) {
+    if ( ! is_singular( 'tbt_flashcard_set' ) ) {
+        return $template;
+    }
+
+    $theme_template = locate_template( 'tbt-flashcards/single-deck.php' );
+    if ( $theme_template ) {
+        return $theme_template;
+    }
+
+    return TBT_FC_DIR . 'templates/single-deck.php';
+}
+add_filter( 'template_include', 'tbt_fc_deck_template_include', 99 );
+
+/**
+ * The deck page is never cached: edits must show at once, and a cached copy
+ * would also freeze the TTS nonce.
+ */
+function tbt_fc_deck_nocache() {
+    if ( is_singular( 'tbt_flashcard_set' ) ) {
+        nocache_headers();
+        header( 'X-LiteSpeed-Cache-Control: no-cache' );
+    }
+}
+add_action( 'template_redirect', 'tbt_fc_deck_nocache' );
+
+/**
+ * Enqueue the player before wp_head on the deck page, so its styles print in
+ * the head rather than the footer.
+ */
+function tbt_fc_deck_enqueue_early() {
+    if ( is_singular( 'tbt_flashcard_set' ) ) {
+        tbt_flashcards_enqueue_assets();
+    }
+}
+add_action( 'wp_enqueue_scripts', 'tbt_fc_deck_enqueue_early' );
