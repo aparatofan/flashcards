@@ -1,28 +1,36 @@
-/* TBT Flashcards v1.0.0 */
+/* TBT Flashcards v2.0.0
+   Every rule is scoped under .tbt-flashcard-app so Divi's typography and
+   button styles can't leak in. Card text is sized in container units (cqw)
+   of the card itself, with a px value first for older browsers. */
 
 .tbt-flashcard-app {
   --tbt-blue: #0856c9;
-  --tbt-blue-dark: #064a9e;
+  --tbt-blue-dark: #063f94;
   --tbt-blue-light: #e8f0fc;
   --tbt-blue-glow: rgba(8, 86, 201, 0.15);
   --card-bg: #ffffff;
-  --text-primary: #1a2332;
-  --text-secondary: #5a6a7e;
-  --text-muted: #8a96a6;
-  --border: #e2e8f0;
-  --radius: 24px;
-  --shadow: 0 25px 50px -12px rgba(0,0,0,0.15);
-  --shadow-hover: 0 25px 50px -12px rgba(0,0,0,0.22);
+  --text-primary: #2c2c2a;
+  --text-secondary: #4e6689;
+  --text-muted: #b4bcc9;
+  --border: #d7dee9;
+  --radius: 22px;
+  --shadow: 0 12px 28px rgba(4, 30, 74, 0.16);
+  --shadow-hover: 0 16px 36px rgba(4, 30, 74, 0.22);
   --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --fc-font-ui: 'Roboto', -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+  --fc-font-content: 'Roboto Slab', Georgia, serif;
+  --fc-font-identity: 'Roboto Mono', ui-monospace, Menlo, Consolas, monospace;
 
-  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
-  font-weight: 300;
+  font-family: var(--fc-font-ui);
+  font-weight: 400;
   color: var(--text-primary);
   width: 100%;
   max-width: 842px;
   margin: 0 auto;
   position: relative;
   box-sizing: border-box;
+  background: none;
+  line-height: 1.5;
 }
 
 .tbt-flashcard-app *,
@@ -31,34 +39,61 @@
   box-sizing: border-box;
 }
 
+.tbt-flashcard-app button {
+  font-family: var(--fc-font-ui);
+  text-transform: none;
+  letter-spacing: normal;
+  line-height: 1;
+  margin: 0;
+  padding: 0;
+}
+
+.tbt-flashcard-app button:focus-visible {
+  outline: 3px solid #7ba7e8;
+  outline-offset: 2px;
+}
+
 /* ── Header ── */
 .tbt-flashcard-app .fc-header {
   display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  margin-bottom: 20px;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 14px;
   padding: 0 4px;
-  gap: 12px;
+  gap: 16px;
 }
 
 .tbt-flashcard-app .fc-set-title {
+  font-family: var(--fc-font-content);
   font-weight: 700;
-  font-size: 18px;
+  font-size: 20px;
+  line-height: 1.3;
   color: var(--tbt-blue);
-  letter-spacing: -0.3px;
+  letter-spacing: -0.01em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
 }
 
+.tbt-flashcard-app .fc-deck-brand {
+  font-family: var(--fc-font-identity);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  color: var(--tbt-blue);
+  opacity: 0.75;
+  white-space: nowrap;
+}
+
 /* ── Card Scene ── */
 .tbt-flashcard-app .fc-card-scene {
-  perspective: 1200px;
+  perspective: 1400px;
   width: 100%;
   height: 595px;
   cursor: pointer;
   margin-bottom: 20px;
+  container-type: inline-size;
 }
 
 .tbt-flashcard-app .fc-card {
@@ -77,6 +112,7 @@
   position: absolute;
   inset: 0;
   backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   display: flex;
@@ -84,6 +120,7 @@
   align-items: center;
   justify-content: center;
   padding: 40px 36px;
+  text-align: center;
   transition: box-shadow var(--transition);
   overflow: hidden;
 }
@@ -95,51 +132,48 @@
 /* ── Card counter (inside card, top-right) ── */
 .tbt-flashcard-app .fc-card-counter {
   position: absolute;
-  top: 20px;
-  right: 24px;
-  font-size: 14px;
+  top: 18px;
+  right: 22px;
+  font-family: var(--fc-font-identity);
+  font-size: 12px;
+  font-size: max(11px, 1.5cqw);
   font-weight: 500;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.08em;
+  font-variant-numeric: tabular-nums;
 }
 
 .tbt-flashcard-app .fc-card-front .fc-card-counter {
-  color: #c0c4cc;
+  color: var(--text-muted);
 }
 
 .tbt-flashcard-app .fc-card-back .fc-card-counter {
-  color: rgba(255,255,255,0.4);
+  color: rgba(255,255,255,0.55);
 }
 
 /* ── Front card ── */
 .tbt-flashcard-app .fc-card-front {
   background: var(--card-bg);
-  border: 1px solid var(--border);
-}
-
-.tbt-flashcard-app .fc-card-front::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: var(--tbt-blue);
-  border-radius: var(--radius) var(--radius) 0 0;
+  border: 0;
 }
 
 .tbt-flashcard-app .fc-word {
+  font-family: var(--fc-font-content);
   font-weight: 700;
   font-size: 44px;
+  font-size: clamp(26px, 5.6cqw, 48px);
   color: var(--text-primary);
   text-align: center;
-  line-height: 1.2;
-  letter-spacing: -0.5px;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
 }
 
 .tbt-flashcard-app .fc-audio-btn {
   margin-top: 20px;
   width: 48px;
   height: 48px;
+  width: clamp(40px, 6cqw, 52px);
+  height: clamp(40px, 6cqw, 52px);
   border-radius: 50%;
   border: none;
   background: rgba(8, 86, 201, 0.08);
@@ -148,18 +182,19 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all var(--transition);
+  transition: background var(--transition), transform var(--transition);
   position: relative;
+  box-shadow: none;
 }
 
 .tbt-flashcard-app .fc-audio-btn:hover {
-  background: rgba(8, 86, 201, 0.15);
-  transform: scale(1.08);
+  background: rgba(8, 86, 201, 0.16);
+  transform: scale(1.06);
 }
 
 .tbt-flashcard-app .fc-audio-btn svg {
-  width: 22px;
-  height: 22px;
+  width: 46%;
+  height: 46%;
   fill: currentColor;
 }
 
@@ -200,50 +235,68 @@
   75% { transform: translateX(3px); }
 }
 
-/* ── Back card ── */
-.tbt-flashcard-app .fc-card-back {
-  background: var(--tbt-blue);
-  border: none;
-  transform: rotateY(180deg);
-  gap: 16px;
+.tbt-flashcard-app .fc-hint {
+  position: absolute;
+  bottom: 16px;
+  left: 0;
+  right: 0;
+  font-size: 12px;
+  font-size: max(11px, 1.5cqw);
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  pointer-events: none;
 }
 
-.tbt-flashcard-app .fc-card-back::before {
-  display: none;
+/* ── Back card ── */
+.tbt-flashcard-app .fc-card-back {
+  color: #ffffff;
+  background:
+    repeating-linear-gradient(45deg, rgba(255,255,255,0.05) 0 8px, rgba(255,255,255,0) 8px 16px),
+    linear-gradient(150deg, #0856c9, #063f94);
+  border: none;
+  transform: rotateY(180deg);
+  gap: 14px;
+  gap: 2.2cqw;
 }
 
 .tbt-flashcard-app .fc-translation {
+  font-family: var(--fc-font-content);
   font-weight: 700;
   font-size: 34px;
+  font-size: clamp(22px, 4cqw, 36px);
   color: #ffffff;
   text-align: center;
-  line-height: 1.3;
+  line-height: 1.25;
+  text-wrap: balance;
 }
 
 .tbt-flashcard-app .fc-phonetic {
-  font-family: 'SF Mono', 'Fira Code', 'Fira Mono', 'Roboto Mono', monospace;
-  font-size: 16px;
-  font-weight: 400;
-  color: rgba(255,255,255,0.7);
+  font-family: var(--fc-font-identity);
+  font-size: 15px;
+  font-size: clamp(12px, 1.9cqw, 17px);
+  font-weight: 500;
+  color: rgba(255,255,255,0.85);
   text-align: center;
-  background: rgba(0,0,0,0.15);
-  padding: 6px 16px;
-  border-radius: 8px;
+  background: rgba(0,0,0,0.16);
+  padding: 5px 14px;
+  border-radius: 7px;
 }
 
 .tbt-flashcard-app .fc-back-divider {
-  width: 80%;
-  border-top: 1px solid rgba(255,255,255,0.15);
+  width: 70%;
+  border-top: 1px solid rgba(255,255,255,0.18);
 }
 
 .tbt-flashcard-app .fc-example {
+  font-family: var(--fc-font-content);
   font-size: 19px;
-  font-weight: 300;
+  font-size: clamp(15px, 2.5cqw, 21px);
+  font-weight: 400;
   font-style: italic;
   color: #ffffff;
   text-align: center;
   line-height: 1.5;
-  max-width: 90%;
+  max-width: 88%;
 }
 
 .tbt-flashcard-app .fc-example:not(:empty)::before {
@@ -259,6 +312,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
 }
 
 .tbt-flashcard-app .fc-nav-btn {
@@ -266,7 +320,7 @@
   height: 52px;
   border-radius: 50%;
   border: 2px solid var(--border);
-  background: white;
+  background: #ffffff;
   color: var(--text-secondary);
   cursor: pointer;
   display: flex;
@@ -274,6 +328,7 @@
   justify-content: center;
   transition: all var(--transition);
   flex-shrink: 0;
+  box-shadow: none;
 }
 
 .tbt-flashcard-app .fc-nav-btn:hover:not(:disabled) {
@@ -294,21 +349,63 @@
   fill: currentColor;
 }
 
+.tbt-flashcard-app .fc-progress {
+  font-family: var(--fc-font-identity);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  font-variant-numeric: tabular-nums;
+  color: #888780;
+  background: #eef1f6;
+  padding: 5px 14px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
 /* ── Finish card ── */
 .tbt-flashcard-app .fc-finish-message {
+  font-family: var(--fc-font-content);
   font-weight: 700;
-  font-size: 28px;
+  font-size: 30px;
+  font-size: clamp(24px, 4.6cqw, 40px);
   color: var(--tbt-blue);
   text-align: center;
-  line-height: 1.4;
+  line-height: 1.3;
 }
 
 .tbt-flashcard-app .fc-finish-sub {
-  font-weight: 300;
-  font-size: 18px;
+  font-family: var(--fc-font-ui);
+  font-weight: 400;
+  font-size: 17px;
+  font-size: clamp(15px, 2.2cqw, 19px);
   color: var(--text-secondary);
   text-align: center;
   margin-top: 8px;
+}
+
+.tbt-flashcard-app .fc-again-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 24px;
+  height: 48px;
+  padding: 0 28px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--tbt-blue);
+  color: #ffffff;
+  font-family: var(--fc-font-ui);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: none;
+  transition: background var(--transition);
+}
+
+.tbt-flashcard-app .fc-again-btn:hover {
+  background: var(--tbt-blue-dark);
 }
 
 /* ── Confetti canvas ── */
@@ -341,18 +438,10 @@
   100% { opacity: 1; transform: translateX(0); }
 }
 
-/* ── Responsive ── */
+/* ── Responsive (inline) ── */
 @media (max-width: 480px) {
   .tbt-flashcard-app .fc-card-scene {
     height: 300px;
-  }
-
-  .tbt-flashcard-app .fc-word {
-    font-size: 32px;
-  }
-
-  .tbt-flashcard-app .fc-translation {
-    font-size: 24px;
   }
 
   .tbt-flashcard-app .fc-card-face {
@@ -360,12 +449,234 @@
   }
 
   .tbt-flashcard-app .fc-set-title {
-    font-size: 15px;
+    font-size: 17px;
   }
 
   .tbt-flashcard-app .fc-card-counter {
     top: 14px;
     right: 16px;
-    font-size: 12px;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   Deck mode — the set's own URL. A fixed full-viewport layer, as in Swipe,
+   so no theme chrome can show. Desktop is the pale table; below 900px the
+   blue brand field.
+   ════════════════════════════════════════════════════════════════════════ */
+
+body.tbtfc-deck-page {
+  margin: 0;
+  overflow: hidden;
+  background: #eef1f6;
+}
+
+.tbt-flashcard-app.is-deck {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  max-width: none;
+  height: 100vh;
+  height: 100dvh;
+  margin: 0;
+  /* Below WordPress's admin bar (99999), as in Swipe. */
+  z-index: 99990;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #eef1f6;
+  -webkit-user-select: none;
+  user-select: none;
+  --deck-card-w: min(62vw, calc((100dvh - 200px) * 842 / 560));
+}
+
+body.admin-bar .tbt-flashcard-app.is-deck {
+  top: 32px;
+  height: calc(100vh - 32px);
+  height: calc(100dvh - 32px);
+}
+
+@media (max-width: 782px) {
+  body.admin-bar .tbt-flashcard-app.is-deck {
+    top: 46px;
+    height: calc(100vh - 46px);
+    height: calc(100dvh - 46px);
+  }
+}
+
+.tbt-flashcard-app.is-deck .fc-header {
+  position: absolute;
+  top: 28px;
+  left: 3.6vw;
+  right: 3.6vw;
+  margin: 0;
+  padding: 0;
+}
+
+.tbt-flashcard-app.is-deck .fc-set-title {
+  font-family: var(--fc-font-identity);
+  font-size: max(11px, 0.75vw);
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #888780;
+}
+
+.tbt-flashcard-app.is-deck .fc-card-scene {
+  width: var(--deck-card-w);
+  height: auto;
+  aspect-ratio: 842 / 560;
+  margin-bottom: 0;
+}
+
+.tbt-flashcard-app.is-deck .fc-card-face {
+  padding: 5.6cqw;
+}
+
+.tbt-flashcard-app.is-deck .fc-card-counter {
+  top: 3.2cqw;
+  right: 3.9cqw;
+  font-size: max(10px, 1.8cqw);
+}
+
+.tbt-flashcard-app.is-deck .fc-word { font-size: 7.1cqw; }
+.tbt-flashcard-app.is-deck .fc-audio-btn {
+  margin-top: 3.5cqw;
+  width: max(36px, 7.4cqw);
+  height: max(36px, 7.4cqw);
+}
+.tbt-flashcard-app.is-deck .fc-hint { bottom: 3.2cqw; font-size: max(10px, 1.7cqw); }
+.tbt-flashcard-app.is-deck .fc-translation { font-size: 5.2cqw; }
+.tbt-flashcard-app.is-deck .fc-phonetic {
+  font-size: max(11px, 2.35cqw);
+  padding: 0.8cqw 2.25cqw;
+  border-radius: 1.3cqw;
+}
+.tbt-flashcard-app.is-deck .fc-example { font-size: 3.05cqw; }
+.tbt-flashcard-app.is-deck .fc-finish-message { font-size: 5.5cqw; }
+.tbt-flashcard-app.is-deck .fc-finish-sub { font-size: max(14px, 2.6cqw); margin-top: 1.3cqw; }
+.tbt-flashcard-app.is-deck .fc-again-btn {
+  margin-top: 3.9cqw;
+  height: max(40px, 7.1cqw);
+  padding: 0 4.2cqw;
+  font-size: max(13px, 2.1cqw);
+}
+
+.tbt-flashcard-app.is-deck .fc-nav {
+  width: var(--deck-card-w);
+  margin-top: 24px;
+}
+
+.tbt-flashcard-app.is-deck .fc-progress {
+  background: rgba(255,255,255,0.8);
+}
+
+.tbt-flashcard-app.is-deck .fc-deck-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  background: rgba(8, 86, 201, 0.1);
+}
+
+.tbt-flashcard-app.is-deck .fc-deck-bar-fill {
+  display: block;
+  width: 0;
+  height: 100%;
+  background: var(--tbt-blue);
+  transition: width 0.3s;
+}
+
+@media (max-width: 899px) {
+  body.tbtfc-deck-page {
+    background: #0856c9;
+  }
+
+  .tbt-flashcard-app.is-deck {
+    background: #0856c9;
+    --deck-card-w: min(84vw, calc((100dvh - 190px) * 3 / 4.1));
+  }
+
+  .tbt-flashcard-app.is-deck .fc-header {
+    top: 22px;
+    left: 18px;
+    right: 18px;
+  }
+
+  .tbt-flashcard-app.is-deck .fc-set-title,
+  .tbt-flashcard-app.is-deck .fc-deck-brand {
+    color: rgba(255,255,255,0.8);
+    font-size: 10px;
+    opacity: 1;
+  }
+
+  .tbt-flashcard-app.is-deck .fc-card-scene {
+    aspect-ratio: 3 / 4.1;
+  }
+
+  .tbt-flashcard-app.is-deck .fc-card-face {
+    border-radius: 18px;
+    padding: 22px;
+    box-shadow: 0 14px 30px rgba(2, 20, 60, 0.35);
+  }
+
+  /* Deeper navy so the back stands apart from the blue field. */
+  .tbt-flashcard-app.is-deck .fc-card-back {
+    background:
+      repeating-linear-gradient(45deg, rgba(255,255,255,0.04) 0 8px, rgba(255,255,255,0) 8px 16px),
+      linear-gradient(160deg, #0b2f6e, #061e4a);
+  }
+
+  .tbt-flashcard-app.is-deck .fc-card-counter { top: 14px; right: 16px; font-size: 11px; }
+  .tbt-flashcard-app.is-deck .fc-hint { bottom: 14px; font-size: 11px; }
+  .tbt-flashcard-app.is-deck .fc-word { font-size: 10.7cqw; }
+  .tbt-flashcard-app.is-deck .fc-audio-btn { width: 52px; height: 52px; margin-top: 22px; }
+  .tbt-flashcard-app.is-deck .fc-translation { font-size: 8.8cqw; }
+  .tbt-flashcard-app.is-deck .fc-phonetic { font-size: max(12px, 4cqw); padding: 4px 10px; border-radius: 6px; }
+  .tbt-flashcard-app.is-deck .fc-example { font-size: max(14px, 5.2cqw); }
+  .tbt-flashcard-app.is-deck .fc-finish-message { font-size: 9.5cqw; }
+  .tbt-flashcard-app.is-deck .fc-finish-sub { font-size: max(14px, 4.8cqw); }
+  .tbt-flashcard-app.is-deck .fc-again-btn { font-size: 14px; height: 44px; padding: 0 22px; margin-top: 20px; }
+
+  .tbt-flashcard-app.is-deck .fc-nav { margin-top: 18px; }
+
+  .tbt-flashcard-app.is-deck .fc-nav-btn {
+    width: 50px;
+    height: 50px;
+    border-color: rgba(255,255,255,0.35);
+    background: rgba(255,255,255,0.1);
+    color: #ffffff;
+  }
+
+  .tbt-flashcard-app.is-deck .fc-nav-btn:hover:not(:disabled) {
+    border-color: #ffffff;
+    color: #ffffff;
+    box-shadow: none;
+  }
+
+  .tbt-flashcard-app.is-deck .fc-progress {
+    background: rgba(255,255,255,0.14);
+    color: #ffffff;
+  }
+
+  .tbt-flashcard-app.is-deck .fc-deck-bar { background: rgba(255,255,255,0.15); }
+  .tbt-flashcard-app.is-deck .fc-deck-bar-fill { background: #ffffff; }
+}
+
+/* ── Reduced motion: no flip or slide (confetti is skipped in the JS). ── */
+@media (prefers-reduced-motion: reduce) {
+  .tbt-flashcard-app .fc-card,
+  .tbt-flashcard-app .fc-card-face,
+  .tbt-flashcard-app .fc-audio-btn,
+  .tbt-flashcard-app .fc-nav-btn,
+  .tbt-flashcard-app .fc-deck-bar-fill {
+    transition: none;
+  }
+
+  .tbt-flashcard-app .fc-card.slide-left,
+  .tbt-flashcard-app .fc-card.slide-right,
+  .tbt-flashcard-app .fc-audio-btn.has-error {
+    animation: none;
   }
 }

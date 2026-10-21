@@ -1,5 +1,5 @@
 /**
- * TBT Flashcards v1.0.0
+ * TBT Flashcards v2.0.0
  * Interactive flashcard widget for The Blue Tree.
  */
 (function () {
@@ -139,6 +139,15 @@
   }
 
   /**
+   * Respect the user's reduced-motion setting: no confetti (the CSS also
+   * drops the flip and slide transitions).
+   */
+  function prefersReducedMotion() {
+    return typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+
+  /**
    * Confetti animation.
    */
   function launchConfetti(canvas) {
@@ -205,8 +214,11 @@
    * Initialize a single flashcard widget instance.
    */
   function initInstance(container) {
+    // Editor sets (2.0) come as JSON from the REST route; legacy sets and
+    // file/url shortcodes keep the 1.0.0 CSV path.
+    var cardsUrl = container.getAttribute('data-cards-url');
     var csvUrl = container.getAttribute('data-csv-url');
-    if (!csvUrl) return;
+    if (!cardsUrl && !csvUrl) return;
 
     var cards = [];
     var currentIndex = 0;
@@ -227,7 +239,21 @@
     var prevBtn = container.querySelector('.fc-prev-btn');
     var nextBtn = container.querySelector('.fc-next-btn');
     var confettiCanvas = container.querySelector('.fc-confetti');
+    var progressEl = container.querySelector('.fc-progress');
+    var deckBarFill = container.querySelector('.fc-deck-bar-fill');
+    var hintEl = container.querySelector('.fc-hint');
     var finishMsg = null;
+    var finishSub = null;
+
+    function updateProgress() {
+      var total = cards.length;
+      var shown = isFinishCard() ? total : currentIndex + 1;
+      if (progressEl) progressEl.textContent = shown + ' / ' + total;
+      if (deckBarFill) {
+        var done = isFinishCard() ? total : currentIndex;
+        deckBarFill.style.width = (total ? (done / total) * 100 : 0) + '%';
+      }
+    }
 
     function isFinishCard() {
       return currentIndex === cards.length;
@@ -247,14 +273,24 @@
         if (!finishMsg) {
           finishMsg = document.createElement('div');
           finishMsg.className = 'fc-finish-message';
-          finishMsg.textContent = 'Well done!';
-          var sub = document.createElement('div');
-          sub.className = 'fc-finish-sub';
-          sub.textContent = 'You completed the whole set.';
-          finishMsg.appendChild(sub);
+          finishMsg.appendChild(document.createTextNode('Well done!'));
+          finishSub = document.createElement('div');
+          finishSub.className = 'fc-finish-sub';
+          finishMsg.appendChild(finishSub);
+          var again = document.createElement('button');
+          again.type = 'button';
+          again.className = 'fc-again-btn';
+          again.textContent = 'START AGAIN';
+          again.addEventListener('click', function (e) {
+            e.stopPropagation();
+            restart();
+          });
+          finishMsg.appendChild(again);
           container.querySelector('.fc-card-front').appendChild(finishMsg);
         }
+        finishSub.textContent = 'You went through all ' + cards.length + ' cards.';
         finishMsg.style.display = 'block';
+        if (hintEl) hintEl.style.display = 'none';
 
         for (var ci = 0; ci < counterCurrentEls.length; ci++) counterCurrentEls[ci].textContent = cards.length;
         for (var ti = 0; ti < counterTotalEls.length; ti++) counterTotalEls[ti].textContent = cards.length;
@@ -263,16 +299,18 @@
 
         cardEl.classList.remove('is-flipped');
         isFlipped = false;
+        updateProgress();
 
         if (!confettiFired) {
           confettiFired = true;
-          launchConfetti(confettiCanvas);
+          if (!prefersReducedMotion()) launchConfetti(confettiCanvas);
         }
         return;
       }
 
       // Hide finish message when going back.
       if (finishMsg) finishMsg.style.display = 'none';
+      if (hintEl) hintEl.style.display = '';
       audioBtn.style.display = 'flex';
 
       var card = cards[currentIndex];
@@ -287,6 +325,7 @@
       for (var ti = 0; ti < counterTotalEls.length; ti++) counterTotalEls[ti].textContent = cards.length;
       prevBtn.disabled = currentIndex === 0;
       nextBtn.disabled = false;
+      updateProgress();
 
       if (isFlipped) {
         isFlipped = false;
@@ -306,6 +345,15 @@
       cardEl.classList.remove('slide-left', 'slide-right');
       void cardEl.offsetWidth; // force reflow
       cardEl.classList.add('slide-left');
+      renderCard();
+    }
+
+    function restart() {
+      if (cards.length === 0) return;
+      currentIndex = 0;
+      cardEl.classList.remove('slide-left', 'slide-right');
+      void cardEl.offsetWidth;
+      cardEl.classList.add('slide-right');
       renderCard();
     }
 
@@ -472,14 +520,28 @@
       speechSynthesis.onvoiceschanged = function () {};
     }
 
-    // Fetch and parse the CSV.
-    fetch(csvUrl)
-      .then(function (response) {
-        if (!response.ok) throw new Error('Failed to load CSV');
-        return response.text();
-      })
-      .then(function (text) {
-        cards = parseCSV(text);
+    // Fetch the cards: JSON for editor sets, otherwise the CSV as before.
+    var loadCards = cardsUrl
+      ? fetch(cardsUrl, { credentials: 'same-origin' })
+        .then(function (response) {
+          if (!response.ok) throw new Error('Failed to load cards');
+          return response.json();
+        })
+        .then(function (data) {
+          return data && Array.isArray(data.cards) ? data.cards : [];
+        })
+      : fetch(csvUrl)
+        .then(function (response) {
+          if (!response.ok) throw new Error('Failed to load CSV');
+          return response.text();
+        })
+        .then(function (text) {
+          return parseCSV(text);
+        });
+
+    loadCards
+      .then(function (loaded) {
+        cards = loaded;
         if (cards.length > 0) {
           currentIndex = 0;
           isFlipped = false;

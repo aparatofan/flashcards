@@ -13,9 +13,12 @@ Keep this file concise. It is loaded at the start of every Claude Code session.
 ## Project basics
 
 - WordPress plugin for The Blue Tree English lessons.
-- Main file: `tbt-flashcards/tbt-flashcards.php`.
+- Main file: `tbt-flashcards/tbt-flashcards.php` (`TBT_FC_VERSION`, `TBT_FC_DIR`, `TBT_FC_URL`).
 - Admin/CPT logic: `tbt-flashcards/admin/`; frontend assets: `tbt-flashcards/assets/`.
-- Shortcode: `[tbt_flashcards]`.
+- 2.0 includes: `includes/access.php` (gate, same rule as Matching Games), `cards.php` (card model, CSV in/out, source rule), `openai.php`, `rest.php` (`tbt-flashcards/v1`), `tools.php`.
+- Shortcodes: `[tbt_flashcards]` (player), `[tbt_flashcards_sets generator="…"]` (teacher library), `[tbt_flashcards_generator library="…"]` (teacher workspace). The two teacher shortcodes render nothing for users without `tbt_fc_can_use_tools()`.
+- Source rule (`tbt_fc_get_cards()`): `_tbt_fc_cards` decoding to a non-empty array = editor set; otherwise a legacy set read from `_tbt_csv_url` / `_tbt_csv_file`. Saving a legacy set writes `_tbt_fc_cards` and never touches the CSV meta.
+- A set's own URL uses the bare `templates/single-deck.php` (no `get_header()`/`get_footer()`), a full-screen deck.
 - Flashcard sets are WordPress-managed content; preserve existing IDs and saved-set compatibility.
 - The plugin registers with TBT Hub but must remain usable when Hub is absent.
 - ElevenLabs TTS is proxied server-side and cached as generated audio.
@@ -31,6 +34,9 @@ Keep this file concise. It is loaded at the start of every Claude Code session.
 ## Behavior to preserve
 
 - Preserve `[tbt_flashcards]` output and saved flashcard-set compatibility.
+- CSV export must stay byte-identical to the existing files: UTF-8 without BOM, header `word,phonetic,translation,example`, LF, final newline, quote only fields with `,` `"` CR or LF. Never use `fputcsv()`. `php tbt-flashcards/tests/test-csv.php` must pass.
+- The PHP CSV parser mirrors `parseCSV()` in `assets/tbt-flashcards.js`; change both together.
+- Front-end lists and mutations are owner-scoped (`post_author`) for everyone, admins included; wp-admin stays the cross-user view.
 - Keep authoring/admin functionality separate from learner-facing interaction.
 - Settings must remain reachable with or without TBT Hub.
 - Reuse the existing CPT, shortcode, AJAX, and asset mechanisms rather than creating parallel storage or endpoints.
@@ -54,6 +60,8 @@ Keep this file concise. It is loaded at the start of every Claude Code session.
 Run `php -l <changed-file>` for changed PHP files.
 
 Run `node --check <changed-file>` for changed JavaScript files when Node is available.
+
+Run `php tbt-flashcards/tests/test-csv.php` when cards, CSV parsing or export change.
 
 For TTS changes, verify at least: authorization/nonce behavior, cache hit, cache miss/generation, and failure handling. For UI changes, verify a saved set through the real shortcode; audio playback and Divi/theme layout require a live browser check when affected.
 
