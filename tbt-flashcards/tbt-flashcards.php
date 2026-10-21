@@ -2,7 +2,7 @@
 /**
  * Plugin Name: TBT Flashcards
  * Description: Interactive flashcard widget for The Blue Tree English lessons.
- * Version: 2.0.0
+ * Version: 2.0.1
  * Author: Mariusz Mirecki
  * Text Domain: tbt-flashcards
  */
@@ -11,7 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'TBT_FC_VERSION', '2.0.0' );
+define( 'TBT_FC_VERSION', '2.0.1' );
 define( 'TBT_FC_DIR', plugin_dir_path( __FILE__ ) );
 define( 'TBT_FC_URL', plugin_dir_url( __FILE__ ) );
 

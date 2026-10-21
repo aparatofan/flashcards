@@ -16,7 +16,7 @@ Keep this file concise. It is loaded at the start of every Claude Code session.
 - Main file: `tbt-flashcards/tbt-flashcards.php` (`TBT_FC_VERSION`, `TBT_FC_DIR`, `TBT_FC_URL`).
 - Admin/CPT logic: `tbt-flashcards/admin/`; frontend assets: `tbt-flashcards/assets/`.
 - 2.0 includes: `includes/access.php` (gate, same rule as Matching Games), `cards.php` (card model, CSV in/out, source rule), `openai.php`, `rest.php` (`tbt-flashcards/v1`), `tools.php`.
-- Shortcodes: `[tbt_flashcards]` (player), `[tbt_flashcards_sets generator="…"]` (teacher library), `[tbt_flashcards_generator library="…"]` (teacher workspace). The two teacher shortcodes render nothing for users without `tbt_fc_can_use_tools()`.
+- Shortcodes: `[tbt_flashcards]` (player), `[tbt_flashcards_sets generator="…"]` (teacher library), `[tbt_flashcards_generator library="…"]` (teacher workspace). The two teacher shortcodes render nothing for users without `tbt_fc_can_use_tools()`. Without the attributes, each finds the other's page by searching published pages for its shortcode; the library's Create/Edit links must never point back at the library itself.
 - Source rule (`tbt_fc_get_cards()`): `_tbt_fc_cards` decoding to a non-empty array = editor set; otherwise a legacy set read from `_tbt_csv_url` / `_tbt_csv_file`. Saving a legacy set writes `_tbt_fc_cards` and never touches the CSV meta.
 - A set's own URL uses the bare `templates/single-deck.php` (no `get_header()`/`get_footer()`), a full-screen deck.
 - Flashcard sets are WordPress-managed content; preserve existing IDs and saved-set compatibility.

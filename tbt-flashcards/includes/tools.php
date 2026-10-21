@@ -95,18 +95,88 @@ function tbt_fc_tools_nocache() {
 add_action( 'template_redirect', 'tbt_fc_tools_nocache' );
 
 /**
- * Resolve a page attribute (full URL or root-relative path); empty means the
- * current page, so both shortcodes can share one page.
+ * Clean a page attribute into a usable URL, or '' when nothing usable is left.
+ *
+ * Divi's editors can turn the quotes around an attribute into curly quotes or
+ * entities, which WordPress then keeps as part of the value. Those are
+ * stripped. A full URL or a root-relative path is kept; a bare slug such as
+ * "tbt-flashcards-generator" becomes "/tbt-flashcards-generator/".
  *
  * @param string $value Attribute value.
  * @return string Unescaped URL.
  */
-function tbt_fc_tool_page_url( $value ) {
-    $value = trim( (string) $value );
-    if ( '' !== $value ) {
+function tbt_fc_clean_page_attr( $value ) {
+    $value = html_entity_decode( (string) $value, ENT_QUOTES, 'UTF-8' );
+    $value = (string) preg_replace( '/^[\s"\'\x{201C}\x{201D}\x{201E}\x{2018}\x{2019}\x{2033}\x{00AB}\x{00BB}]+|[\s"\'\x{201C}\x{201D}\x{201E}\x{2018}\x{2019}\x{2033}\x{00AB}\x{00BB}]+$/u', '', $value );
+
+    if ( '' === $value ) {
+        return '';
+    }
+    if ( preg_match( '#^https?://#i', $value ) || 0 === strpos( $value, '/' ) ) {
         return $value;
     }
+    if ( preg_match( '#^[a-z0-9][a-z0-9/_-]*$#i', $value ) ) {
+        return '/' . trim( $value, '/' ) . '/';
+    }
 
+    return '';
+}
+
+/**
+ * Does this post's content hold the given shortcode?
+ *
+ * A plain search rather than has_shortcode(), so it also sees shortcodes
+ * nested in Divi modules or stored inside block attributes.
+ *
+ * @param WP_Post|null $post Post.
+ * @param string       $tag  Shortcode tag.
+ * @return bool
+ */
+function tbt_fc_post_has_tool( $post, $tag ) {
+    return $post instanceof WP_Post && false !== strpos( (string) $post->post_content, '[' . $tag );
+}
+
+/**
+ * Find the published page that holds a tool shortcode, other than the current
+ * one. Lets a two-page setup work without any attributes.
+ *
+ * @param string $tag Shortcode tag.
+ * @return string Permalink, or ''.
+ */
+function tbt_fc_find_tool_page( $tag ) {
+    static $memo = array();
+    if ( isset( $memo[ $tag ] ) ) {
+        return $memo[ $tag ];
+    }
+
+    $memo[ $tag ] = '';
+    $current      = get_queried_object_id();
+    $candidates   = get_posts( array(
+        'post_type'        => array( 'page', 'post' ),
+        'post_status'      => 'publish',
+        's'                => $tag,
+        'posts_per_page'   => 20,
+        'orderby'          => 'date',
+        'order'            => 'ASC',
+        'suppress_filters' => false,
+    ) );
+
+    foreach ( $candidates as $candidate ) {
+        if ( (int) $candidate->ID !== (int) $current && tbt_fc_post_has_tool( $candidate, $tag ) ) {
+            $memo[ $tag ] = (string) get_permalink( $candidate );
+            break;
+        }
+    }
+
+    return $memo[ $tag ];
+}
+
+/**
+ * The current page's permalink.
+ *
+ * @return string
+ */
+function tbt_fc_current_page_url() {
     $queried = get_queried_object_id();
     if ( $queried ) {
         $link = get_permalink( $queried );
@@ -116,7 +186,55 @@ function tbt_fc_tool_page_url( $value ) {
     }
 
     $request = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : '/'; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
-    return remove_query_arg( 'set', home_url( strtok( $request, '?' ) ) );
+    return home_url( strtok( $request, '?' ) );
+}
+
+/**
+ * Where the library's Create new set and Edit links go.
+ *
+ * In order: the generator="…" attribute; the current page when it also holds
+ * the workspace; the published page that holds the workspace; and, only when
+ * this page's content can't be read (a Divi Theme Builder layout), the current
+ * page. Never the library page itself when it demonstrably has no workspace,
+ * since that link would just reload the library (the Matching Games 0.7.1 bug).
+ *
+ * @param string $attr generator attribute.
+ * @return string Unescaped URL, or '' when there is nowhere to go.
+ */
+function tbt_fc_generator_url( $attr ) {
+    $url = tbt_fc_clean_page_attr( $attr );
+
+    if ( '' === $url ) {
+        $post = get_queried_object();
+        if ( tbt_fc_post_has_tool( $post, 'tbt_flashcards_generator' ) ) {
+            $url = tbt_fc_current_page_url();
+        } else {
+            $url = tbt_fc_find_tool_page( 'tbt_flashcards_generator' );
+            if ( '' === $url && ! tbt_fc_post_has_tool( $post, 'tbt_flashcards_sets' ) ) {
+                $url = tbt_fc_current_page_url();
+            }
+        }
+    }
+
+    return (string) apply_filters( 'tbt_fc_generator_url', remove_query_arg( 'set', $url ) );
+}
+
+/**
+ * Where the workspace's Back to sets link goes: the library="…" attribute,
+ * else the published page that holds the library. '' (no link) when the
+ * library is on this same page or can't be found.
+ *
+ * @param string $attr library attribute.
+ * @return string Unescaped URL, or ''.
+ */
+function tbt_fc_library_url( $attr ) {
+    $url = tbt_fc_clean_page_attr( $attr );
+
+    if ( '' === $url && ! tbt_fc_post_has_tool( get_queried_object(), 'tbt_flashcards_sets' ) ) {
+        $url = tbt_fc_find_tool_page( 'tbt_flashcards_sets' );
+    }
+
+    return (string) apply_filters( 'tbt_fc_library_url', $url );
 }
 
 /**
@@ -133,7 +251,7 @@ function tbt_fc_render_library( $atts ) {
     $atts = shortcode_atts( array( 'generator' => '' ), $atts, 'tbt_flashcards_sets' );
     tbt_fc_enqueue_tools_assets();
 
-    $generator = tbt_fc_tool_page_url( $atts['generator'] );
+    $generator = tbt_fc_generator_url( $atts['generator'] );
 
     $query = new WP_Query( array(
         'post_type'      => 'tbt_flashcard_set',
@@ -176,8 +294,14 @@ function tbt_fc_render_library( $atts ) {
                     <span class="tbtfc-libbar__line tbtfc-libbar__line--end" aria-hidden="true"></span>
                 </div>
             <?php endif; ?>
-            <a class="tbtfc-button tbtfc-button--primary tbtfc-libbar__cta" href="<?php echo esc_url( remove_query_arg( 'set', $generator ) ); ?>"><?php esc_html_e( 'Create new set', 'tbt-flashcards' ); ?></a>
+            <?php if ( '' !== $generator ) : ?>
+                <a class="tbtfc-button tbtfc-button--primary tbtfc-libbar__cta" href="<?php echo esc_url( $generator ); ?>"><?php esc_html_e( 'Create new set', 'tbt-flashcards' ); ?></a>
+            <?php endif; ?>
         </div>
+
+        <?php if ( '' === $generator ) : ?>
+            <p class="tbtfc-error tbtfc-error--block"><?php echo wp_kses( __( 'The set editor page could not be found. Publish a page with <code>[tbt_flashcards_generator]</code>, or add <code>generator="/your-editor-page/"</code> to this shortcode.', 'tbt-flashcards' ), array( 'code' => array() ) ); ?></p>
+        <?php endif; ?>
 
         <p class="tbtfc-libbar__summary" data-tbtfc-summary aria-live="polite" hidden>
             <span data-tbtfc-summary-text></span>
@@ -212,7 +336,9 @@ function tbt_fc_render_library( $atts ) {
                             <button type="button" class="tbtfc-btn" data-tbtfc-copy="<?php echo esc_attr( '[tbt_flashcards id="' . $set->ID . '"]' ); ?>"><?php esc_html_e( 'Copy shortcode', 'tbt-flashcards' ); ?></button>
                             <button type="button" class="tbtfc-btn" data-tbtfc-copy="<?php echo esc_attr( $link ); ?>"><?php esc_html_e( 'Copy link', 'tbt-flashcards' ); ?></button>
                             <a class="tbtfc-btn" href="<?php echo esc_url( tbt_fc_csv_rest_url( $set->ID ) ); ?>" download><?php esc_html_e( 'Export CSV', 'tbt-flashcards' ); ?></a>
-                            <a class="tbtfc-btn" href="<?php echo esc_url( add_query_arg( 'set', $set->ID, $generator ) ); ?>"><?php esc_html_e( 'Edit', 'tbt-flashcards' ); ?></a>
+                            <?php if ( '' !== $generator ) : ?>
+                                <a class="tbtfc-btn" href="<?php echo esc_url( add_query_arg( 'set', $set->ID, $generator ) ); ?>"><?php esc_html_e( 'Edit', 'tbt-flashcards' ); ?></a>
+                            <?php endif; ?>
                             <button type="button" class="tbtfc-btn tbtfc-btn--danger" data-tbtfc-delete><?php esc_html_e( 'Delete', 'tbt-flashcards' ); ?></button>
                         </div>
                     </div>
@@ -240,7 +366,7 @@ function tbt_fc_render_generator( $atts ) {
     $atts = shortcode_atts( array( 'library' => '' ), $atts, 'tbt_flashcards_generator' );
     tbt_fc_enqueue_tools_assets();
 
-    $library = trim( (string) $atts['library'] );
+    $library = tbt_fc_library_url( $atts['library'] );
     $set_id  = isset( $_GET['set'] ) ? absint( $_GET['set'] ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only; the REST route checks ownership.
 
     static $instance = 0;
