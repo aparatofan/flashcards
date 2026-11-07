@@ -2,7 +2,7 @@
 /**
  * Plugin Name: TBT Flashcards
  * Description: Interactive flashcard widget for The Blue Tree English lessons.
- * Version: 2.0.1
+ * Version: 2.0.2
  * Author: Mariusz Mirecki
  * Text Domain: tbt-flashcards
  */
@@ -11,7 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'TBT_FC_VERSION', '2.0.1' );
+define( 'TBT_FC_VERSION', '2.0.2' );
 define( 'TBT_FC_DIR', plugin_dir_path( __FILE__ ) );
 define( 'TBT_FC_URL', plugin_dir_url( __FILE__ ) );
 
@@ -339,8 +339,9 @@ function tbt_fc_tts_proxy() {
     if ( '' === $text ) {
         wp_send_json( array( 'error' => 'Empty text' ), 400 );
     }
-    if ( strlen( $text ) > 200 ) {
-        wp_send_json( array( 'error' => 'Text too long (max 200 characters)' ), 400 );
+    // 400, not 200: TBT Translation Drill sends whole model-answer sentences.
+    if ( strlen( $text ) > 400 ) {
+        wp_send_json( array( 'error' => 'Text too long (max 400 characters)' ), 400 );
     }
 
     // API key must be configured.
