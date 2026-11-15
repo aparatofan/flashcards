@@ -1,0 +1,183 @@
+<title>TBT Lesson Glossary</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&family=Roboto+Slab:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* Lesson world: white page, whitespace for structure; one quiet table with search, sort and paging. */
+:root{
+  --blue:#0856C9; --blue-dark:#063F94;
+  --gi:#663366; --pd:#006600;
+  --page:#FFFFFF; --input:#F0F5FE; --selected:#EDF4FF; --stripe:#F8FAFD;
+  --border:#D8E3F0; --ink:#1F2937; --muted:#667085;
+  --ring:0 0 0 3px rgba(8,86,201,.18);
+  --look:var(--gi);
+  --font-ui:"Roboto",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+  --font-content:"Roboto Slab",Georgia,"Times New Roman",serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --blue:#4D8DF0; --blue-dark:#2F6FD6; --gi:#B983B9; --pd:#5FB85F;
+    --page:#111824; --input:#1C2738; --selected:#1A2A44; --stripe:#141C29;
+    --border:#2A3A52; --ink:#E6EBF3; --muted:#9AA6B8; --ring:0 0 0 3px rgba(90,150,255,.35);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --blue:#4D8DF0; --blue-dark:#2F6FD6; --gi:#B983B9; --pd:#5FB85F;
+  --page:#111824; --input:#1C2738; --selected:#1A2A44; --stripe:#141C29;
+  --border:#2A3A52; --ink:#E6EBF3; --muted:#9AA6B8; --ring:0 0 0 3px rgba(90,150,255,.35);
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+body{background:var(--page);color:var(--ink);font:400 16px/1.5 var(--font-ui)}
+.wrap{max-width:1080px;margin:0 auto;padding-block:24px 96px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+.proto{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;color:var(--muted);font-size:14px;margin-bottom:40px}
+.seg{display:inline-flex;background:var(--input);border-radius:12px;padding:4px;gap:4px}
+.seg button{font:600 13px/1 var(--font-ui);border:0;background:transparent;color:var(--ink);border-radius:9px;height:32px;padding:0 12px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--page);color:var(--blue);box-shadow:0 1px 3px rgba(24,56,96,.15)}
+
+/* toolbar */
+.bar{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:16px}
+.search{position:relative;flex:0 1 340px;min-width:0}
+.search svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none}
+.search input{width:100%;height:44px;border:1px solid transparent;border-radius:12px;background:var(--input);color:var(--ink);font:400 16px/1 var(--font-ui);padding:0 40px 0 42px}
+.search input::placeholder{color:var(--muted)}
+.search input:focus{outline:none;background:var(--page);border-color:var(--blue);box-shadow:var(--ring)}
+.clear{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:32px;height:32px;border:0;border-radius:8px;background:transparent;color:var(--muted);cursor:pointer;font-size:18px;line-height:1}
+.clear:hover{background:var(--selected);color:var(--blue)}
+.count{color:var(--muted);font-size:15px;font-variant-numeric:tabular-nums}
+
+/* table */
+.tablebox{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;padding:0;border-bottom:2px solid var(--look)}
+th button{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:8px;width:100%;padding:12px 16px;font:700 14px/1.2 var(--font-ui);letter-spacing:.04em;text-transform:uppercase;color:var(--look);cursor:pointer;border-radius:8px 8px 0 0}
+th button:hover{background:var(--selected)}
+th button:focus-visible{box-shadow:var(--ring)}
+.arrow{display:inline-grid;place-items:center;width:16px;height:16px;color:var(--muted);font-size:12px}
+th[aria-sort="ascending"] .arrow,th[aria-sort="descending"] .arrow{color:var(--blue)}
+td{padding:14px 16px;border-bottom:1px solid var(--border);vertical-align:top;font:400 17px/1.45 var(--font-content)}
+td:first-child{font-weight:500;width:50%}
+tbody tr:nth-child(even) td{background:var(--stripe)}
+mark{background:var(--selected);color:inherit;border-radius:3px;padding:0 1px;box-shadow:inset 0 -2px 0 var(--blue)}
+.empty td{text-align:center;color:var(--muted);font-family:var(--font-ui);padding:32px 16px}
+.linkbtn{border:0;background:none;color:var(--blue);font:600 15px/1 var(--font-ui);cursor:pointer;padding:4px;border-radius:6px}
+.linkbtn:focus-visible{outline:none;box-shadow:var(--ring)}
+
+/* pager */
+.pager{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:20px}
+.pages{display:flex;align-items:center;gap:8px}
+.pbtn{height:40px;padding:0 16px;border:1px solid var(--border);border-radius:12px;background:var(--page);color:var(--blue);font:600 15px/1 var(--font-ui);cursor:pointer}
+.pbtn:hover:not(:disabled){background:var(--selected);border-color:var(--blue)}
+.pbtn:focus-visible{outline:none;box-shadow:var(--ring)}
+.pbtn:disabled{opacity:.5;cursor:not-allowed}
+.range{color:var(--muted);font-size:15px;font-variant-numeric:tabular-nums;min-width:120px;text-align:center}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <div class="proto">
+    <span>Prototype: the lesson glossary as students see it</span>
+    <div class="seg" role="group" aria-label="Lesson category">
+      <button type="button" data-look="gi" aria-pressed="true">Man and Society</button>
+      <button type="button" data-look="pd" aria-pressed="false">Personal Development</button>
+    </div>
+  </div>
+
+  <div class="bar">
+    <div class="search">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <label for="q" class="vh" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Search the glossary</label>
+      <input id="q" type="search" placeholder="Search in English or Polish" autocomplete="off">
+      <button type="button" class="clear" id="clear" aria-label="Clear search" hidden>×</button>
+    </div>
+    <span class="count" id="count" aria-live="polite"></span>
+  </div>
+
+  <div class="tablebox">
+    <table>
+      <thead><tr>
+        <th scope="col" data-col="0" aria-sort="none"><button type="button">Expression <span class="arrow" aria-hidden="true">↕</span></button></th>
+        <th scope="col" data-col="1" aria-sort="none"><button type="button">Polish translation <span class="arrow" aria-hidden="true">↕</span></button></th>
+      </tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+
+  <div class="pager" id="pager">
+    <div class="pages">
+      <button type="button" class="pbtn" id="prev">Previous</button>
+      <span class="range" id="range"></span>
+      <button type="button" class="pbtn" id="next">Next 10</button>
+    </div>
+    <button type="button" class="linkbtn" id="all">Show all</button>
+  </div>
+</div>
+
+<script>
+const DATA = [["Make a confession", "wyznać coś"], ["Experience stress", "doświadczać stresu"], ["Do more harm than good", "wyrządzić więcej szkody niż pożytku"], ["Increase the risk of a disease", "zwiększać ryzyko choroby"], ["Change your mind", "zmienić zdanie"], ["Die prematurely", "umrzeć przedwcześnie"], ["Make an estimate", "oszacować"], ["Freak out", "wpaść w panikę"], ["Stress somebody out", "stresować kogoś"], ["Impromptu speech", "improwizowane przemówienie"], ["Discouraging feedback", "zniechęcająca informacja zwrotna"], ["Stress response", "reakcja na stres"], ["Pounding heart", "walące serce"], ["Anxiety", "niepokój"], ["Cope with the pressure", "radzić sobie z presją"], ["Energised", "pełen energii"], ["Conduct a study", "przeprowadzić badanie"], ["Heart rate", "tętno"], ["Chronic stress", "przewlekły stres"], ["Cardiovascular disease", "choroba układu krążenia"], ["Fascinating finding", "fascynujące odkrycie"], ["Courage", "odwaga"], ["Get rid of", "pozbyć się"], ["Rise to a challenge", "sprostać wyzwaniu"], ["Demonise", "demonizować"], ["Redeem yourself", "zrehabilitować się"], ["Under-appreciated aspect", "niedoceniany aspekt"], ["Get a lot of hype", "być na fali popularności"], ["Fine-tune something", "dopracowywać coś"], ["Prime somebody to do something", "nastawiać kogoś do zrobienia czegoś"], ["Strengthen a relationship", "wzmacniać relację"], ["Crave", "pragnąć"], ["Enhance", "wzmacniać"], ["Seek support", "szukać wsparcia"], ["Nudge somebody to do something", "zachęcać kogoś do zrobienia czegoś"], ["Bottle something up", "tłumić coś w sobie"], ["Reach out to", "zwrócić się do"], ["Resilience", "odporność psychiczna"], ["Help out", "pomagać"], ["Harmful effects", "szkodliwe skutki"], ["Inevitable", "nieunikniony"], ["Compassionate", "współczujący"], ["Profound", "głęboki"], ["Handle stress", "radzić sobie ze stresem"], ["Face challenges", "stawiać czoła wyzwaniom"], ["Make a difference", "robić różnicę"], ["Life expectancy", "oczekiwana długość życia"], ["Lifestyle choice", "wybór stylu życia"], ["Avoid discomfort", "unikać dyskomfortu"]];
+const PER = 10;
+let page = 0, showAll = false, sortCol = null, sortDir = 1, query = '';
+const $ = s => document.querySelector(s);
+const fold = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/ł/g,'l');
+
+function rowsNow(){
+  const q = fold(query.trim());
+  let r = DATA.map((d,i)=>({d,i})).filter(({d}) => !q || fold(d[0]).includes(q) || fold(d[1]).includes(q));
+  if(sortCol!==null) r.sort((a,b)=> sortDir * a.d[sortCol].localeCompare(b.d[sortCol], sortCol? 'pl':'en', {sensitivity:'base'}));
+  return r;
+}
+function hl(text){
+  const frag=document.createDocumentFragment(); const q=fold(query.trim());
+  if(!q){ frag.append(text); return frag; }
+  const f=fold(text); let i=0, at;
+  while((at=f.indexOf(q,i))>-1){ frag.append(text.slice(i,at)); const m=document.createElement('mark'); m.textContent=text.slice(at,at+q.length); frag.append(m); i=at+q.length; }
+  frag.append(text.slice(i)); return frag;
+}
+function render(){
+  const r=rowsNow(), total=r.length, pages=Math.max(1,Math.ceil(total/PER));
+  if(page>=pages) page=pages-1;
+  const shown = showAll ? r : r.slice(page*PER, page*PER+PER);
+  const tb=$('#rows'); tb.textContent='';
+  if(!total){
+    const tr=document.createElement('tr'); tr.className='empty'; const td=document.createElement('td'); td.colSpan=2;
+    td.append(`No expressions match “${query.trim()}”. `);
+    const b=document.createElement('button'); b.className='linkbtn'; b.textContent='Clear search'; b.onclick=clearQ; td.append(b);
+    tr.append(td); tb.append(tr);
+  }
+  shown.forEach(({d})=>{ const tr=document.createElement('tr'); const a=document.createElement('td'), b=document.createElement('td'); a.append(hl(d[0])); b.append(hl(d[1])); tr.append(a,b); tb.append(tr); });
+  $('#count').textContent = query.trim() ? `${total} of ${DATA.length} expressions` : `${DATA.length} expressions`;
+  const from = total? (showAll?1:page*PER+1) : 0, to = showAll? total : Math.min(total,page*PER+PER);
+  $('#range').textContent = total ? `${from}–${to} of ${total}` : '';
+  $('#prev').hidden=$('#next').hidden=$('#range').hidden = showAll || total<=PER;
+  $('#prev').disabled = page===0; $('#next').disabled = page>=pages-1;
+  const left = total - to; $('#next').textContent = left>0 && left<PER ? `Next ${left}` : 'Next 10';
+  $('#all').hidden = total<=PER; $('#all').textContent = showAll ? 'Show 10 at a time' : `Show all ${total}`;
+  $('#pager').hidden = total<=PER;
+  document.querySelectorAll('th').forEach(th=>{
+    const c=+th.dataset.col, on=c===sortCol;
+    th.setAttribute('aria-sort', on ? (sortDir>0?'ascending':'descending') : 'none');
+    th.querySelector('.arrow').textContent = on ? (sortDir>0?'▲':'▼') : '↕';
+  });
+}
+function clearQ(){ query=''; $('#q').value=''; $('#clear').hidden=true; page=0; render(); $('#q').focus(); }
+$('#q').addEventListener('input',e=>{ query=e.target.value; $('#clear').hidden=!query; page=0; render(); });
+$('#q').addEventListener('keydown',e=>{ if(e.key==='Escape') clearQ(); });
+$('#clear').addEventListener('click',clearQ);
+$('#prev').addEventListener('click',()=>{ page--; render(); });
+$('#next').addEventListener('click',()=>{ page++; render(); });
+$('#all').addEventListener('click',()=>{ showAll=!showAll; page=0; render(); });
+document.querySelectorAll('th button').forEach(b=>b.addEventListener('click',()=>{
+  const c=+b.parentElement.dataset.col;
+  if(sortCol===c){ if(sortDir>0) sortDir=-1; else { sortCol=null; sortDir=1; } } else { sortCol=c; sortDir=1; }
+  page=0; render();
+}));
+document.querySelectorAll('[data-look]').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('[data-look]').forEach(x=>x.setAttribute('aria-pressed','false'));
+  b.setAttribute('aria-pressed','true');
+  document.documentElement.style.setProperty('--look', b.dataset.look==='pd'?'var(--pd)':'var(--gi)');
+}));
+render();
+</script>
