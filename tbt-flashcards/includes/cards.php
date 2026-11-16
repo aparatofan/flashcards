@@ -151,10 +151,14 @@ function tbt_fc_card_count( $post_id ) {
 /**
  * Read a legacy CSV: from disk when it lives in uploads, otherwise over HTTP.
  *
- * @param string $url CSV URL.
+ * With $local_only the HTTP fallback is never used: a URL outside uploads,
+ * or a file that cannot be read from disk, gives a WP_Error (the glossary).
+ *
+ * @param string $url        CSV URL.
+ * @param bool   $local_only Read from disk only.
  * @return string|WP_Error
  */
-function tbt_fc_read_csv_text( $url ) {
+function tbt_fc_read_csv_text( $url, $local_only = false ) {
     $uploads = wp_upload_dir( null, false );
 
     if ( empty( $uploads['error'] ) && ! empty( $uploads['baseurl'] ) ) {
@@ -174,6 +178,10 @@ function tbt_fc_read_csv_text( $url ) {
                 }
             }
         }
+    }
+
+    if ( $local_only ) {
+        return new WP_Error( 'tbt_fc_csv_unreachable', __( 'The CSV file could not be loaded.', 'tbt-flashcards' ) );
     }
 
     $response = wp_remote_get( $url, array( 'timeout' => 10 ) );

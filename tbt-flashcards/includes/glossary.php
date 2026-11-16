@@ -1,8 +1,9 @@
 <?php
 /**
- * [tbt_flashcards_glossary ids="361,362" domain="gi"]
+ * [tbt_flashcards_glossary ids="361,362" urls="https://…/a.csv" domain="gi"]
  *
- * A lesson's glossary, read live from its flashcard sets: expression and
+ * A lesson's glossary, read live from its flashcard sets and from CSV files
+ * in this site's uploads (sets first, then files): expression and
  * Polish translation. The server builds the rows and embeds them as JSON on
  * the root; assets/js/glossary.js renders search, sort and paging from that
  * data. Read-only, no REST call.
@@ -84,6 +85,47 @@ function tbt_fc_glossary_parse_ids( $value ) {
 }
 
 /**
+ * CSV URLs from the urls attribute, in order, without empties or duplicates.
+ *
+ * Straight or curly quotes (or their entities) that Divi leaves around the
+ * value are trimmed first, as tbt_fc_glossary_parse_ids() ignores them.
+ *
+ * @param string $value Attribute value.
+ * @return string[]
+ */
+function tbt_fc_glossary_parse_urls( $value ) {
+    $urls = array();
+    foreach ( explode( ',', (string) $value ) as $url ) {
+        $url = preg_replace( '/^(?:\s|["\'\x{201C}\x{201D}\x{2033}]|&#82(?:20|21|43);|&quot;)+|(?:\s|["\'\x{201C}\x{201D}\x{2033}]|&#82(?:20|21|43);|&quot;)+$/u', '', $url );
+        $url = esc_url_raw( trim( (string) $url ) );
+        if ( '' !== $url && ! in_array( $url, $urls, true ) ) {
+            $urls[] = $url;
+        }
+    }
+    return $urls;
+}
+
+/**
+ * Card lists from CSV files, read from disk only (never over HTTP) and
+ * parsed like the url flashcards. A URL outside uploads, or a file that
+ * cannot be read, is skipped.
+ *
+ * @param string[] $urls CSV URLs.
+ * @return array[] List of card lists.
+ */
+function tbt_fc_glossary_url_sets( array $urls ) {
+    $sets = array();
+    foreach ( $urls as $url ) {
+        $text = tbt_fc_read_csv_text( $url, true );
+        if ( is_wp_error( $text ) ) {
+            continue;
+        }
+        $sets[] = tbt_fc_parse_csv( (string) $text );
+    }
+    return $sets;
+}
+
+/**
  * Enqueue the glossary's CSS and JS once per request.
  */
 function tbt_fc_enqueue_glossary_assets() {
@@ -124,6 +166,7 @@ add_action( 'wp_enqueue_scripts', 'tbt_fc_maybe_enqueue_glossary_early' );
 function tbt_fc_render_glossary( $atts ) {
     $atts = shortcode_atts( array(
         'ids'    => '',
+        'urls'   => '',
         'domain' => '',
     ), $atts, 'tbt_flashcards_glossary' );
 
@@ -135,6 +178,7 @@ function tbt_fc_render_glossary( $atts ) {
         }
         $sets[] = tbt_fc_get_cards( $id );
     }
+    $sets = array_merge( $sets, tbt_fc_glossary_url_sets( tbt_fc_glossary_parse_urls( $atts['urls'] ) ) );
 
     $rows = tbt_fc_glossary_rows( $sets );
     if ( empty( $rows ) ) {
