@@ -211,11 +211,14 @@
     background: transparent;
     color: var(--tbt-fc-gl-ink);
     font: 400 17px/1.45 var(--tbt-fc-gl-font-content);
+    text-align: left;
 }
 
+/* Left as well: the lesson's Discussion module sets td:first-child { text-align: center } page-wide. */
 .tbt-fc-gl .tbt-fc-gl-table td:first-child {
     font-weight: 500;
     width: 50%;
+    text-align: left;
 }
 
 .tbt-fc-gl .tbt-fc-gl-table tbody tr:nth-child(even) td {

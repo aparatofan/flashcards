@@ -16,7 +16,21 @@ function add_action() {}
 function add_shortcode() {}
 
 class WP_Error {}
+function is_wp_error( $thing ) { return $thing instanceof WP_Error; }
+function __( $text ) { return $text; }
+function esc_url_raw( $url ) { return preg_match( '#^https?://#i', $url ) ? $url : ''; }
+function wp_remote_get() { throw new Exception( 'The glossary must never read over HTTP.' ); }
 
+// A temporary uploads folder, removed at the end.
+$uploads_dir = sys_get_temp_dir() . '/tbt-fc-gl-' . getmypid();
+mkdir( $uploads_dir . '/2026/11', 0777, true );
+function wp_upload_dir() {
+    global $uploads_dir;
+    return array( 'error' => false, 'baseurl' => 'https://thebluetree.pl/wp-content/uploads', 'basedir' => $uploads_dir );
+}
+function untrailingslashit( $value ) { return rtrim( $value, '/\\' ); }
+
+require __DIR__ . '/../includes/cards.php';
 require __DIR__ . '/../includes/glossary.php';
 
 $failures = 0;
@@ -91,6 +105,37 @@ check( 'rows carry two columns only', 2 === count( $rows[0] ) );
 check( 'ids parsed in order', array( 361, 362, 363 ) === tbt_fc_glossary_parse_ids( '361, 362,363' ) );
 check( 'ids survive curly quotes and duplicates', array( 361, 362 ) === tbt_fc_glossary_parse_ids( '”361,362,361″' ) );
 check( 'empty ids', array() === tbt_fc_glossary_parse_ids( '' ) );
+
+// 8. urls attribute: commas, spaces, duplicates, empties.
+$a = 'https://thebluetree.pl/wp-content/uploads/2026/11/a.csv';
+$b = 'https://thebluetree.pl/wp-content/uploads/2026/11/b.csv';
+check( 'urls parsed in order, trimmed', array( $a, $b ) === tbt_fc_glossary_parse_urls( " $a ,$b" ) );
+check( 'urls duplicates and empties dropped', array( $a, $b ) === tbt_fc_glossary_parse_urls( "$a,, $a ,$b," ) );
+check( 'empty urls', array() === tbt_fc_glossary_parse_urls( '' ) );
+check( 'urls survive curly quotes', array( $a, $b ) === tbt_fc_glossary_parse_urls( "”{$a},{$b}″" ) );
+
+// 9. Files: read from uploads only, never over HTTP.
+file_put_contents( $uploads_dir . '/2026/11/a.csv', "\xEF\xBB\xBFword,phonetic,translation,example\nHabit,/ˈhæbɪt/,nawyk,A good habit.\nFree,/friː/,darmowy,It is free.\n" );
+try {
+    $sets = tbt_fc_glossary_url_sets( array( $a ) );
+    check( 'a file in uploads is read', array( array( 'Habit', 'nawyk' ), array( 'Free', 'darmowy' ) ) === tbt_fc_glossary_rows( $sets ), var_export( $sets, true ) );
+    $sets = tbt_fc_glossary_url_sets( array( 'https://example.com/wp-content/uploads/2026/11/a.csv' ) );
+    check( 'a URL outside uploads is skipped', array() === $sets );
+    $sets = tbt_fc_glossary_url_sets( array( $b ) );
+    check( 'a missing file is skipped', array() === $sets );
+    check( 'http and https uploads URLs both read', 1 === count( tbt_fc_glossary_url_sets( array( str_replace( 'https:', 'http:', $a ) ) ) ) );
+} catch ( Exception $e ) {
+    check( 'no HTTP read', false, $e->getMessage() );
+}
+
+// 10. A set and a file with the same word give one row: the set's.
+$rows = tbt_fc_glossary_rows( array_merge( array( array( card( 'habit', 'przyzwyczajenie' ) ) ), tbt_fc_glossary_url_sets( array( $a ) ) ) );
+check( 'set word wins over file word', array( array( 'habit', 'przyzwyczajenie' ), array( 'Free', 'darmowy' ) ) === $rows, var_export( $rows, true ) );
+
+unlink( $uploads_dir . '/2026/11/a.csv' );
+rmdir( $uploads_dir . '/2026/11' );
+rmdir( $uploads_dir . '/2026' );
+rmdir( $uploads_dir );
 
 echo $failures ? "\n$failures failure(s)\n" : "\nAll tests passed\n";
 exit( $failures ? 1 : 0 );
