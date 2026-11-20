@@ -2,7 +2,7 @@
 /**
  * Plugin Name: TBT Flashcards
  * Description: Interactive flashcard widget for The Blue Tree English lessons.
- * Version: 2.2.0
+ * Version: 2.3.0
  * Author: Mariusz Mirecki
  * Text Domain: tbt-flashcards
  */
@@ -11,7 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'TBT_FC_VERSION', '2.2.0' );
+define( 'TBT_FC_VERSION', '2.3.0' );
 define( 'TBT_FC_DIR', plugin_dir_path( __FILE__ ) );
 define( 'TBT_FC_URL', plugin_dir_url( __FILE__ ) );
 
@@ -576,22 +576,29 @@ function tbt_flashcards_render_app( $args ) {
             <?php endif; ?>
         </div>
 
-        <div class="fc-card-scene"<?php echo $is_deck ? '' : ' style="height:' . esc_attr( $height ) . 'px;"'; ?>>
+        <?php if ( ! $is_deck ) : ?>
+        <div class="fc-table">
+        <?php endif; ?>
+
+        <?php // 2.3.0: the height attribute / data-height are still accepted but no longer size the card (16:9). ?>
+        <div class="fc-card-scene">
+            <div class="fc-stack" aria-hidden="true"></div>
             <div class="fc-card">
                 <div class="fc-card-face fc-card-front">
-                    <div class="fc-card-counter"><span class="fc-counter-current">0</span> / <span class="fc-counter-total">0</span></div>
+                    <span class="fc-face-tag">Word</span>
                     <div class="fc-word">&mdash;</div>
+                    <div class="fc-phonetic"></div>
                     <button class="fc-audio-btn" title="Listen">
                         <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
                     </button>
-                    <div class="fc-hint">Click to flip</div>
+                    <div class="fc-hint">Click or press Space to flip</div>
                 </div>
                 <div class="fc-card-face fc-card-back">
-                    <div class="fc-card-counter"><span class="fc-counter-current">0</span> / <span class="fc-counter-total">0</span></div>
+                    <span class="fc-face-tag">Meaning</span>
                     <div class="fc-translation">&mdash;</div>
-                    <div class="fc-phonetic"></div>
                     <div class="fc-back-divider"></div>
                     <div class="fc-example"></div>
+                    <div class="fc-hint">Click or press Space to flip</div>
                 </div>
             </div>
         </div>
@@ -605,6 +612,10 @@ function tbt_flashcards_render_app( $args ) {
                 <svg viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
             </button>
         </div>
+
+        <?php if ( ! $is_deck ) : ?>
+        </div>
+        <?php endif; ?>
 
         <?php if ( $is_deck ) : ?>
             <div class="fc-deck-bar" aria-hidden="true"><span class="fc-deck-bar-fill"></span></div>
