@@ -1,5 +1,5 @@
 /**
- * TBT Flashcards v2.0.0
+ * TBT Flashcards v2.3.0
  * Interactive flashcard widget for The Blue Tree.
  */
 (function () {
@@ -234,14 +234,14 @@
     var phoneticText = container.querySelector('.fc-phonetic');
     var exampleText = container.querySelector('.fc-example');
     var backDivider = container.querySelector('.fc-back-divider');
-    var counterCurrentEls = container.querySelectorAll('.fc-counter-current');
-    var counterTotalEls = container.querySelectorAll('.fc-counter-total');
     var prevBtn = container.querySelector('.fc-prev-btn');
     var nextBtn = container.querySelector('.fc-next-btn');
     var confettiCanvas = container.querySelector('.fc-confetti');
     var progressEl = container.querySelector('.fc-progress');
     var deckBarFill = container.querySelector('.fc-deck-bar-fill');
-    var hintEl = container.querySelector('.fc-hint');
+    var hintEls = container.querySelectorAll('.fc-hint');
+    var faceTagEls = container.querySelectorAll('.fc-face-tag');
+    var stackEl = container.querySelector('.fc-stack');
     var finishMsg = null;
     var finishSub = null;
 
@@ -257,6 +257,30 @@
 
     function isFinishCard() {
       return currentIndex === cards.length;
+    }
+
+    function setDisplay(els, value) {
+      for (var i = 0; i < els.length; i++) els[i].style.display = value;
+    }
+
+    /**
+     * Undealt cards under the live card, as in Swipe's renderStack():
+     * one back per remaining card, max 4. Empty on the last and finish card.
+     */
+    function renderStack() {
+      if (!stackEl) return;
+      while (stackEl.firstChild) stackEl.removeChild(stackEl.firstChild);
+      var remaining = isFinishCard() ? 0 : cards.length - 1 - currentIndex;
+      var n = Math.min(4, Math.max(0, remaining));
+      for (var i = 0; i < n; i++) {
+        var d = i + 1;
+        var back = document.createElement('div');
+        back.className = 'fc-stack-card';
+        back.style.transform = 'translate(' + (2 * d) + 'px, ' + (3 * d) + 'px) rotate(' + ((d % 2 ? 1 : -1) * 0.5 * d) + 'deg)';
+        back.style.opacity = String(1 - 0.08 * d);
+        back.style.zIndex = String(4 - d);
+        stackEl.appendChild(back);
+      }
     }
 
     function renderCard() {
@@ -290,16 +314,15 @@
         }
         finishSub.textContent = 'You went through all ' + cards.length + ' cards.';
         finishMsg.style.display = 'block';
-        if (hintEl) hintEl.style.display = 'none';
-
-        for (var ci = 0; ci < counterCurrentEls.length; ci++) counterCurrentEls[ci].textContent = cards.length;
-        for (var ti = 0; ti < counterTotalEls.length; ti++) counterTotalEls[ti].textContent = cards.length;
+        setDisplay(hintEls, 'none');
+        setDisplay(faceTagEls, 'none');
         prevBtn.disabled = false;
         nextBtn.disabled = true;
 
         cardEl.classList.remove('is-flipped');
         isFlipped = false;
         updateProgress();
+        renderStack();
 
         if (!confettiFired) {
           confettiFired = true;
@@ -310,7 +333,8 @@
 
       // Hide finish message when going back.
       if (finishMsg) finishMsg.style.display = 'none';
-      if (hintEl) hintEl.style.display = '';
+      setDisplay(hintEls, '');
+      setDisplay(faceTagEls, '');
       audioBtn.style.display = 'flex';
 
       var card = cards[currentIndex];
@@ -321,11 +345,10 @@
       exampleText.textContent = card.example || '';
       exampleText.style.display = card.example ? '' : 'none';
       if (backDivider) backDivider.style.display = card.example ? '' : 'none';
-      for (var ci = 0; ci < counterCurrentEls.length; ci++) counterCurrentEls[ci].textContent = currentIndex + 1;
-      for (var ti = 0; ti < counterTotalEls.length; ti++) counterTotalEls[ti].textContent = cards.length;
       prevBtn.disabled = currentIndex === 0;
       nextBtn.disabled = false;
       updateProgress();
+      renderStack();
 
       if (isFlipped) {
         isFlipped = false;
@@ -355,6 +378,7 @@
       void cardEl.offsetWidth;
       cardEl.classList.add('slide-right');
       renderCard();
+      renderStack();
     }
 
     function prevCard() {
