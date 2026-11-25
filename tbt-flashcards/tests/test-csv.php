@@ -98,5 +98,19 @@ check( 'only the four keys', array( 'word', 'phonetic', 'translation', 'example'
 $many = array_fill( 0, 350, array( 'word' => 'w' ) );
 check( 'at most 300 cards', 300 === count( tbt_fc_sanitize_cards( $many ) ) );
 
+// 6. Unquoted commas (2.4.3): extra fields are joined back, never dropped.
+$gifts = tbt_fc_parse_csv( file_get_contents( __DIR__ . '/fixtures/gifts-and-giving-unquoted.csv' ) );
+check( 'unquoted fixture parses to 20 cards', 20 === count( $gifts ), 'got ' . count( $gifts ) );
+check( 'unquoted comma in an example is kept', "The present was tiny, but it's the thought that counts." === $gifts[9]['example'], $gifts[9]['example'] );
+check( 'second unquoted example is kept', 'Even on a tight budget, you can find something special.' === $gifts[16]['example'], $gifts[16]['example'] );
+check( 'translation untouched by the repair', 'the idea that caring matters more than the gift itself' === $gifts[9]['translation'] );
+$fixed = tbt_fc_to_csv( $gifts );
+check( 'repaired card exports quoted', false !== strpos( $fixed, ",\"The present was tiny, but it's the thought that counts.\"\n" ) );
+$t = tbt_fc_parse_csv( "word,phonetic,translation,example\nDiligently,/x/,pilnie, starannie,She worked diligently.\n" );
+check( 'unquoted comma in a translation is kept', 'pilnie, starannie' === $t[0]['translation'] && 'She worked diligently.' === $t[0]['example'], var_export( $t, true ) );
+$t = tbt_fc_parse_csv( "word,phonetic,translation,example\nw,/w/,t,One,two,three\n" );
+check( 'commas without spaces go to the last column', 'One,two,three' === $t[0]['example'], var_export( $t, true ) );
+check( 'join helper leaves a correct row alone', array( 'a', ' b', 'c' ) === tbt_fc_join_extra_fields( array( 'a', ' b', 'c' ), ',', 3 ) );
+
 echo $failures ? "\n$failures failure(s)\n" : "\nAll tests passed\n";
 exit( $failures ? 1 : 0 );
