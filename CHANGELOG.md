@@ -1,5 +1,15 @@
 # Changelog — TBT Flashcards
 
+## 2.4.2 — 25 Nov 2026
+
+Paste words: multi-line Quizlet cards and AI Polish translations. Spec: `docs/SPEC-2.4.2.md`.
+
+- **Multi-line cards.** In tab mode, a line without a tab is part of the card above it (joined with a space), never a new word; before the first card it is ignored. `Definition:` / `Definicja:` labels are removed; `Example:` / `Przykład:` and what follows is split off as context and never stored. Other separator modes are unchanged. `tbt_fc_parse_pasted()` now returns cards `{term, definition, example}`; `tbt_fc_paste_pairs()` gives the `[term, definition]` pairs a plain Save stores, as before.
+- **English definitions hint.** The count line adds "English definitions found: consider Translate to Polish" when more than half of the definitions have no Polish diacritics and either a `Definition:` label or more than 6 words (`tbt_fc_paste_english()`, mirrored in JS).
+- **Translate to Polish (AI)** beside **Save** on every row. `POST glossary-import/translate {post_id, text, from}` translates 40 cards per call (at most 300), and the screen repeats it ("Translating 40 of 45…") and then replaces the box with `term⇥translation` lines: "45 words translated by AI. Check them, then press Save." Dropped terms come back as `term⇥`, with a note. If a call fails, the box stays as it was and the error shows in red. Nothing is stored until **Save**.
+- New `includes/glossary-translate.php`: a translation-only prompt (the lesson title as context; `term — definition`, or the example when there is no definition) and schema `{translations: [{index, translation}]}`, `tbt_fc_align_translations()` and `tbt_fc_translate_terms()`.
+- The OpenAI request code moved unchanged from `tbt_fc_generate()` into `tbt_fc_openai_json_request()`, shared with the translation. The card generator's request and result are identical.
+
 ## 2.4.1 — 25 Nov 2026
 
 Paste a glossary from a Quizlet export. Spec: `docs/SPEC-2.4.1.md`.
