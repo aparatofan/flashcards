@@ -1,5 +1,14 @@
 # Changelog — TBT Flashcards
 
+## 2.4.3 — 25 Nov 2026
+
+CSV rows with unquoted commas no longer lose text.
+
+- **Bug:** in a CSV such as `…,The present was tiny, but it's the thought that counts.`, the unquoted comma split the example into a 5th column, which was dropped, so the card's back showed only "The present was tiny".
+- **Fix:** a row with more fields than the header is repaired before the cards are read: a separator followed by a space is text, so that piece is joined back to the field before it; anything still extra goes into the last column (the example). Same rule in the browser (`joinExtraFields()` in `assets/tbt-flashcards.js`) and on the server (`tbt_fc_join_extra_fields()` in `includes/cards.php`), so lessons, glossaries and the editor all see the same cards. Correct rows are untouched.
+- Saving such a set in the editor exports it properly quoted, as before.
+- Tests: `tests/fixtures/gifts-and-giving-unquoted.csv` and new cases in `tests/test-csv.php`.
+
 ## 2.4.2 — 25 Nov 2026
 
 Paste words: multi-line Quizlet cards and AI Polish translations. Spec: `docs/SPEC-2.4.2.md`.

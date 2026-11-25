@@ -60,9 +60,38 @@
   }
 
   /**
+   * Repair a row that has more fields than the header (2.4.3).
+   * An unquoted comma inside a sentence used to split it into an extra field
+   * that was dropped. A separator followed by a space is text, so those pieces
+   * are joined back first, left to right; anything still extra belongs to the
+   * last column (the example). Mirrors tbt_fc_join_extra_fields() in
+   * includes/cards.php.
+   */
+  function joinExtraFields(cols, delimiter, expected) {
+    var extra = cols.length - expected;
+    if (!expected || expected < 1 || extra <= 0) return cols;
+
+    var out = [cols[0]];
+    for (var i = 1; i < cols.length; i++) {
+      if (extra > 0 && cols[i].charAt(0) === ' ') {
+        out[out.length - 1] += delimiter + cols[i];
+        extra--;
+      } else {
+        out.push(cols[i]);
+      }
+    }
+
+    if (out.length > expected) {
+      var tail = out.splice(expected - 1);
+      out.push(tail.join(delimiter));
+    }
+    return out;
+  }
+
+  /**
    * Parse a single CSV line respecting quoted fields.
    */
-  function parseCSVLine(line, delimiter) {
+  function parseCSVLine(line, delimiter, expected) {
     var result = [];
     var current = '';
     var inQuotes = false;
@@ -83,6 +112,7 @@
       }
     }
     result.push(current);
+    result = joinExtraFields(result, delimiter, expected);
     return result.map(function (s) {
       return s.replace(/^"|"$/g, '').trim();
     });
@@ -123,7 +153,7 @@
 
     var cards = [];
     for (var i = 1; i < lines.length; i++) {
-      var cols = parseCSVLine(lines[i], delimiter);
+      var cols = parseCSVLine(lines[i], delimiter, headers.length);
       if (cols.length <= Math.max(wordIdx, translationIdx)) continue;
       var word = (cols[wordIdx] || '').trim();
       if (!word) continue;

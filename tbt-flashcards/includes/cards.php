@@ -209,12 +209,54 @@ function tbt_fc_js_trim( $value ) {
 }
 
 /**
+ * Repair a row that has more fields than the header (2.4.3).
+ *
+ * An unquoted comma inside a sentence ("The present was tiny, but it's the
+ * thought that counts.") splits it into an extra field, which used to be
+ * dropped. A separator followed by a space is text, not a field boundary, so
+ * those pieces are joined back first, left to right; anything still extra
+ * belongs to the last column (the example in the standard format).
+ * Mirrors joinExtraFields() in assets/tbt-flashcards.js.
+ *
+ * @param string[] $cols      Raw (untrimmed) fields.
+ * @param string   $delimiter Field separator.
+ * @param int      $expected  Number of header columns.
+ * @return string[]
+ */
+function tbt_fc_join_extra_fields( array $cols, $delimiter, $expected ) {
+    $extra = count( $cols ) - $expected;
+    if ( $expected < 1 || $extra <= 0 ) {
+        return $cols;
+    }
+
+    $out   = array( (string) $cols[0] );
+    $count = count( $cols );
+    for ( $i = 1; $i < $count; $i++ ) {
+        $piece = (string) $cols[ $i ];
+        if ( $extra > 0 && ' ' === substr( $piece, 0, 1 ) ) {
+            $out[ count( $out ) - 1 ] .= $delimiter . $piece;
+            $extra--;
+        } else {
+            $out[] = $piece;
+        }
+    }
+
+    if ( count( $out ) > $expected ) {
+        $tail  = array_splice( $out, $expected - 1 );
+        $out[] = implode( $delimiter, $tail );
+    }
+
+    return $out;
+}
+
+/**
  * Parse CSV text into cards.
  *
  * Mirrors parseCSV() in assets/tbt-flashcards.js so a legacy set has the same
  * cards on the server as in the browser: the same delimiter detection (tab,
  * then semicolon, then comma, from the header line), the same header aliases,
- * the same trimming, and rows without a word are skipped.
+ * the same trimming, rows with too many fields are repaired
+ * (tbt_fc_join_extra_fields()), and rows without a word are skipped.
  *
  * @param string $text CSV text.
  * @return array[]
@@ -260,7 +302,11 @@ function tbt_fc_parse_csv( $text ) {
             function ( $s ) {
                 return tbt_fc_js_trim( preg_replace( '/^"|"$/', '', (string) $s ) );
             },
-            str_getcsv( rtrim( $lines[ $i ], "\r" ), $delimiter, '"', '' )
+            tbt_fc_join_extra_fields(
+                str_getcsv( rtrim( $lines[ $i ], "\r" ), $delimiter, '"', '' ),
+                $delimiter,
+                count( $headers )
+            )
         );
 
         if ( count( $cols ) <= max( $word_idx, $translation_idx ) ) {
