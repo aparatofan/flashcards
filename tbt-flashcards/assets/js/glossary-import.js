@@ -812,7 +812,7 @@
                 info.textContent = count + ( 1 === count ? ' word' : ' words' ) + ' translated by AI. Check them, then press Save.';
                 if ( missing ) {
                     info.appendChild( el( 'br' ) );
-                    info.appendChild( el( 'span', 'tbt-fc-imp-bad', missing + ( 1 === missing ? ' word' : ' words' ) + ' came back without a translation; they are at the end of their line, after the tab. Fill them in or delete the line.' ) );
+                    info.appendChild( el( 'span', 'tbt-fc-imp-bad', ( 1 === missing ? '1 word came back without a translation; it is at the end of its line, after the tab. Fill it in or delete the line.' : missing + ' words came back without a translation; they are at the end of their line, after the tab. Fill them in or delete the line.' ) ) );
                 }
                 save.classList.add( 'button-primary' );
                 ai.classList.remove( 'button-primary' );
