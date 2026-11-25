@@ -2,7 +2,7 @@
 /**
  * Plugin Name: TBT Flashcards
  * Description: Interactive flashcard widget for The Blue Tree English lessons.
- * Version: 2.4.3
+ * Version: 2.5.0
  * Author: Mariusz Mirecki
  * Text Domain: tbt-flashcards
  */
@@ -11,7 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'TBT_FC_VERSION', '2.4.3' );
+define( 'TBT_FC_VERSION', '2.5.0' );
 define( 'TBT_FC_DIR', plugin_dir_path( __FILE__ ) );
 define( 'TBT_FC_URL', plugin_dir_url( __FILE__ ) );
 
@@ -609,11 +609,11 @@ function tbt_flashcards_render_app( $args ) {
 
         <div class="fc-nav">
             <button class="fc-nav-btn fc-prev-btn" title="Previous" disabled>
-                <svg viewBox="0 0 24 24"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6z"/></svg>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6z"/></svg><span class="fc-nav-label"><?php esc_html_e( 'Back', 'tbt-flashcards' ); ?></span>
             </button>
             <div class="fc-progress" aria-live="polite">0 / 0</div>
             <button class="fc-nav-btn fc-next-btn" title="Next">
-                <svg viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
+                <span class="fc-nav-label"><?php esc_html_e( 'Next', 'tbt-flashcards' ); ?></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
             </button>
         </div>
 
