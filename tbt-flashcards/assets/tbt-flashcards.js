@@ -272,6 +272,7 @@
     var hintEls = container.querySelectorAll('.fc-hint');
     var faceTagEls = container.querySelectorAll('.fc-face-tag');
     var stackEl = container.querySelector('.fc-stack');
+    var faceEls = container.querySelectorAll('.fc-card-face');
     var finishMsg = null;
     var finishSub = null;
 
@@ -311,6 +312,74 @@
         back.style.zIndex = String(4 - d);
         stackEl.appendChild(back);
       }
+    }
+
+    /**
+     * 2.5.0 long-text fit: a face whose content is taller than its room gets
+     * a smaller --fit (every face font size is multiplied by it in the CSS),
+     * 5% at a time, never below 0.7 and never above 1. Content is measured
+     * from its in-flow children, because the face centres it and clips.
+     */
+    function faceOverflows(face) {
+      var cs = window.getComputedStyle(face);
+      var box = face.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+      if (box <= 0) return false;
+      // Room the absolutely placed tag and hint take beyond the padding; the
+      // content is centred, so keep the larger of the two on both sides.
+      var top = 0, bottom = 0;
+      var used = 0, count = 0, tooWide = false;
+      for (var i = 0; i < face.children.length; i++) {
+        var el = face.children[i];
+        var ecs = window.getComputedStyle(el);
+        if (ecs.display === 'none') continue;
+        if (ecs.position === 'absolute') {
+          if (el.classList.contains('fc-face-tag')) {
+            top = Math.max(top, el.offsetTop + el.offsetHeight - parseFloat(cs.paddingTop));
+          } else if (el.classList.contains('fc-hint')) {
+            bottom = Math.max(bottom, face.clientHeight - el.offsetTop - parseFloat(cs.paddingBottom));
+          }
+          continue;
+        }
+        used += el.offsetHeight + parseFloat(ecs.marginTop) + parseFloat(ecs.marginBottom);
+        if (el.scrollWidth > el.clientWidth + 1) tooWide = true;
+        count++;
+      }
+      if (!count) return false;
+      used += (count - 1) * (parseFloat(cs.rowGap) || 0);
+      // Plus a little breathing room, so fitted text never touches the hint.
+      var room = box - 2 * Math.max(0, top, bottom) - 0.03 * face.clientWidth;
+      return tooWide || used > room + 0.5;
+    }
+
+    function fitFaces() {
+      for (var i = 0; i < faceEls.length; i++) {
+        var face = faceEls[i];
+        var fit = 1;
+        face.style.setProperty('--fit', '1');
+        while (fit > 0.7 + 1e-6 && faceOverflows(face)) {
+          fit = Math.round((fit - 0.05) * 100) / 100;
+          face.style.setProperty('--fit', String(fit));
+        }
+      }
+    }
+
+    var fitTimer = null;
+    function scheduleFit() {
+      if (fitTimer) clearTimeout(fitTimer);
+      fitTimer = setTimeout(function () {
+        fitTimer = null;
+        if (cards.length) fitFaces();
+      }, 100);
+    }
+
+    window.addEventListener('resize', scheduleFit);
+    if (typeof ResizeObserver !== 'undefined' && cardScene) {
+      new ResizeObserver(scheduleFit).observe(cardScene);
+    }
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(function () {
+        if (cards.length) fitFaces();
+      });
     }
 
     function renderCard() {
@@ -353,6 +422,7 @@
         isFlipped = false;
         updateProgress();
         renderStack();
+        fitFaces();
 
         if (!confettiFired) {
           confettiFired = true;
@@ -379,6 +449,7 @@
       nextBtn.disabled = false;
       updateProgress();
       renderStack();
+      fitFaces();
 
       if (isFlipped) {
         isFlipped = false;

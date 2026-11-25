@@ -1,5 +1,15 @@
 # Changelog — TBT Flashcards
 
+## 2.5.0 — 25 Nov 2026
+
+Card style v2: white table, light blue front, TBT blue back everywhere, phone card 8% smaller with the stack, smaller back text and long-text fit, labelled Back / Next. Spec: `docs/SPEC-2.5.0.md`.
+
+- **White table.** No grey lesson panel (`.fc-table` is transparent, padding only for the stack) and no blue phone field; the deck page is white at every width.
+- **Faces.** Front `#EEF4FE` with a `#D7E4F8` hairline; tag, IPA and hint re-tuned for 4.5:1 on light blue; white audio circle. Back is the TBT blue gradient at every width (the phone navy is gone). Shadows per Card style contract v2.
+- **Phone deck.** Card 8% smaller (`* 0.92`), the stack now shows, translation `7.2cqw`, example `max(12px, 4.2cqw)`.
+- **Long-text fit.** Every face font size is multiplied by `--fit`; `fitFaces()` steps it down 5% at a time (never below 0.7, never above 1) after each render, on resize (debounced) and once web fonts load.
+- **Back / Next pills.** Labelled pills (Back light blue, Next solid TBT blue) with the counter pill between them; 56px, 48px on the phone deck. Keyboard shortcuts unchanged.
+
 ## 2.4.3 — 25 Nov 2026
 
 CSV rows with unquoted commas no longer lose text.

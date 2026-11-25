@@ -23,7 +23,7 @@ Keep this file concise. It is loaded at the start of every Claude Code session.
 - wpDataTables import (`includes/glossary-import.php`, pure helpers in `glossary-import-format.php`): wpDataTables' tables are only read, its code never called. Without wpDataTables, `[wpdatatable]` renders `''` (admins: a grey note).
 - Paste words (2.4.1): `POST glossary-import/paste` stores pasted Quizlet exports through `tbt_fc_wdt_store_rows()`, the save step shared with the import.
 - Paste words AI (2.4.2): `includes/glossary-translate.php`, `POST glossary-import/translate` (40 cards per call, never stores); the OpenAI request is `tbt_fc_openai_json_request()`, shared with `tbt_fc_generate()`, whose request must stay identical.
-- Current release: `docs/SPEC-2.4.2.md`.
+- Current release: `docs/SPEC-2.5.0.md`.
 - A set's own URL uses the bare `templates/single-deck.php` (no `get_header()`/`get_footer()`), a full-screen deck.
 - Flashcard sets are WordPress-managed content; preserve existing IDs and saved-set compatibility.
 - The plugin registers with TBT Hub but must remain usable when Hub is absent.

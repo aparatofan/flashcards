@@ -1,4 +1,4 @@
-/* TBT Flashcards v2.3.0
+/* TBT Flashcards v2.5.0 (Card style contract v2)
    Every rule is scoped under .tbt-flashcard-app so Divi's typography and
    button styles can't leak in. Card text is sized in container units (cqw)
    of the card itself, with a px value first for older browsers. */
@@ -49,7 +49,7 @@
 }
 
 .tbt-flashcard-app button:focus-visible {
-  outline: 3px solid #7ba7e8;
+  outline: 2px solid #0856c9;
   outline-offset: 2px;
 }
 
@@ -86,20 +86,15 @@
   white-space: nowrap;
 }
 
-/* ── Table panel (inline only; the deck page is the table) ── */
+/* ── Table (inline only): v2 sits the card on plain white, no panel ── */
 .tbt-flashcard-app .fc-table {
-  background: #eef1f6;
-  border-radius: 18px;
-  /* Extra right and bottom room for the stack offset. */
-  padding: 34px 46px 26px 34px;
+  background: transparent;
+  /* Room for the stack offset and nothing more. */
+  padding: 0 16px 20px 0;
 }
 
 .tbt-flashcard-app .fc-table .fc-nav {
   margin-top: 30px;
-}
-
-.tbt-flashcard-app .fc-table .fc-progress {
-  background: #ffffff;
 }
 
 /* ── Card Scene (Card style contract v1: 16:9, shared with Swipe) ── */
@@ -152,7 +147,7 @@
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
   border-radius: var(--radius);
-  box-shadow: var(--shadow);
+  box-shadow: var(--face-shadow, var(--shadow));
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -162,10 +157,6 @@
   text-align: center;
   transition: box-shadow var(--transition);
   overflow: hidden;
-}
-
-.tbt-flashcard-app .fc-card-scene:hover .fc-card-face {
-  box-shadow: var(--shadow-hover);
 }
 
 /* ── Logo (top-right): colour on the front, white on the back ── */
@@ -198,7 +189,7 @@
   line-height: 1;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: #8299b8;
+  color: #4f6fa6;
   pointer-events: none;
 }
 
@@ -206,10 +197,11 @@
   color: rgba(255, 255, 255, 0.6);
 }
 
-/* ── Front card ── */
+/* ── Front card: very light blue with a hairline edge (contract v2) ── */
 .tbt-flashcard-app .fc-card-front {
-  background: var(--card-bg);
-  border: 0;
+  background: #eef4fe;
+  border: 1px solid #d7e4f8;
+  --face-shadow: 0 12px 32px rgba(8, 86, 201, 0.14);
   gap: 1.6cqw;
 }
 
@@ -217,7 +209,7 @@
   font-family: var(--fc-font-content);
   font-weight: 700;
   font-size: 44px;
-  font-size: 6.6cqw;
+  font-size: calc(6.6cqw * var(--fit, 1));
   color: var(--tbt-blue);
   text-align: center;
   line-height: 1.15;
@@ -233,9 +225,9 @@
 .tbt-flashcard-app .fc-phonetic {
   font-family: var(--fc-font-identity);
   font-size: 15px;
-  font-size: max(12px, 2.3cqw);
+  font-size: calc(max(12px, 2.3cqw) * var(--fit, 1));
   font-weight: 500;
-  color: #4e6689;
+  color: #3e5a85;
   text-align: center;
   line-height: 1.3;
 }
@@ -249,19 +241,19 @@
   height: max(38px, 6.6cqw);
   border-radius: 50%;
   border: none;
-  background: rgba(8, 86, 201, 0.08);
+  background: #ffffff;
   color: var(--tbt-blue);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background var(--transition), transform var(--transition);
+  transition: box-shadow var(--transition), transform var(--transition);
   position: relative;
-  box-shadow: none;
+  box-shadow: 0 2px 10px rgba(8, 86, 201, 0.12);
 }
 
 .tbt-flashcard-app .fc-audio-btn:hover {
-  background: rgba(8, 86, 201, 0.16);
+  box-shadow: 0 4px 14px rgba(8, 86, 201, 0.22);
   transform: scale(1.06);
 }
 
@@ -318,15 +310,16 @@
   font-size: 12px;
   font-size: max(11px, 1.6cqw);
   line-height: 1.2;
-  color: #8299b8;
+  color: #557099;
   letter-spacing: 0.04em;
   pointer-events: none;
 }
 
-/* ── Back card: solid blue, no stripes (stripes only on the stack) ── */
+/* ── Back card: TBT blue at every width, no stripes (stripes only on the stack) ── */
 .tbt-flashcard-app .fc-card-back {
   color: #ffffff;
   background: linear-gradient(150deg, #0856c9, #063f94);
+  --face-shadow: 0 12px 32px rgba(8, 86, 201, 0.22);
   border: none;
   transform: rotateY(180deg);
   gap: 14px;
@@ -341,7 +334,7 @@
   font-family: var(--fc-font-content);
   font-weight: 700;
   font-size: 34px;
-  font-size: 5.6cqw;
+  font-size: calc(5.6cqw * var(--fit, 1));
   color: #ffffff;
   text-align: center;
   line-height: 1.2;
@@ -356,7 +349,7 @@
 .tbt-flashcard-app .fc-example {
   font-family: var(--fc-font-content);
   font-size: 19px;
-  font-size: 3.2cqw;
+  font-size: calc(3.2cqw * var(--fit, 1));
   font-weight: 400;
   font-style: italic;
   color: rgba(255, 255, 255, 0.95);
@@ -382,36 +375,66 @@
 }
 
 .tbt-flashcard-app .fc-nav-btn {
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  border: 2px solid var(--border);
-  background: #ffffff;
-  color: var(--text-secondary);
+  height: 56px;
+  border-radius: 999px;
+  border: 0;
+  background: #dce8fb;
+  color: var(--tbt-blue);
+  font-family: var(--fc-font-ui);
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1;
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: all var(--transition);
+  gap: 6px;
+  transition: background var(--transition);
   flex-shrink: 0;
   box-shadow: none;
 }
 
-.tbt-flashcard-app .fc-nav-btn:hover:not(:disabled) {
-  border-color: var(--tbt-blue);
-  color: var(--tbt-blue);
-  box-shadow: 0 2px 12px var(--tbt-blue-glow);
-  transform: translateY(-1px);
+/* Back (previous): light blue. */
+.tbt-flashcard-app .fc-prev-btn {
+  padding: 0 28px 0 22px;
+}
+
+.tbt-flashcard-app .fc-prev-btn:hover:not(:disabled) {
+  background: #cfe0fa;
+}
+
+/* Next: solid TBT blue. */
+.tbt-flashcard-app .fc-next-btn {
+  padding: 0 22px 0 30px;
+  background: var(--tbt-blue);
+  color: #ffffff;
+  box-shadow: 0 6px 16px rgba(8, 86, 201, 0.3);
+}
+
+.tbt-flashcard-app .fc-next-btn:hover:not(:disabled) {
+  background: var(--tbt-blue-dark);
 }
 
 .tbt-flashcard-app .fc-nav-btn:disabled {
-  opacity: 0.35;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
+.tbt-flashcard-app .fc-nav-btn:focus-visible {
+  outline: 2px solid #0856c9;
+  outline-offset: 3px;
+}
+
+.tbt-flashcard-app .fc-next-btn:focus-visible {
+  outline-color: #063f94;
+}
+
 .tbt-flashcard-app .fc-nav-btn svg {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
   fill: currentColor;
 }
 
@@ -421,8 +444,8 @@
   font-weight: 500;
   letter-spacing: 0.08em;
   font-variant-numeric: tabular-nums;
-  color: #888780;
-  background: #eef1f6;
+  color: #3e5a85;
+  background: #eef4fe;
   padding: 5px 14px;
   border-radius: 999px;
   white-space: nowrap;
@@ -433,7 +456,7 @@
   font-family: var(--fc-font-content);
   font-weight: 700;
   font-size: 30px;
-  font-size: clamp(24px, 4.6cqw, 40px);
+  font-size: calc(clamp(24px, 4.6cqw, 40px) * var(--fit, 1));
   color: var(--tbt-blue);
   text-align: center;
   line-height: 1.3;
@@ -443,7 +466,7 @@
   font-family: var(--fc-font-ui);
   font-weight: 400;
   font-size: 17px;
-  font-size: clamp(15px, 2.2cqw, 19px);
+  font-size: calc(clamp(15px, 2.2cqw, 19px) * var(--fit, 1));
   color: var(--text-secondary);
   text-align: center;
   margin-top: 8px;
@@ -513,14 +536,14 @@
 
 /* ════════════════════════════════════════════════════════════════════════
    Deck mode — the set's own URL. A fixed full-viewport layer, as in Swipe,
-   so no theme chrome can show. Desktop is the pale table; below 900px the
-   blue brand field.
+   so no theme chrome can show. White behind the card at every width
+   (contract v2).
    ════════════════════════════════════════════════════════════════════════ */
 
 body.tbtfc-deck-page {
   margin: 0;
   overflow: hidden;
-  background: #eef1f6;
+  background: #ffffff;
 }
 
 .tbt-flashcard-app.is-deck {
@@ -537,7 +560,7 @@ body.tbtfc-deck-page {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: #eef1f6;
+  background: #ffffff;
   -webkit-user-select: none;
   user-select: none;
   --deck-card-w: min(720px, 62vw, calc((100dvh - 220px) * 16 / 9));
@@ -575,6 +598,11 @@ body.admin-bar .tbt-flashcard-app.is-deck {
   color: #888780;
 }
 
+.tbt-flashcard-app.is-deck .fc-deck-brand {
+  color: #888780;
+  opacity: 1;
+}
+
 .tbt-flashcard-app.is-deck .fc-card-scene {
   width: var(--deck-card-w);
   height: auto;
@@ -585,8 +613,8 @@ body.admin-bar .tbt-flashcard-app.is-deck {
 /* Faces use the contract's cqw values from the base rules, so the deck page
    and a lesson match exactly. Only the finish card is tuned here. */
 
-.tbt-flashcard-app.is-deck .fc-finish-message { font-size: 5.5cqw; }
-.tbt-flashcard-app.is-deck .fc-finish-sub { font-size: max(14px, 2.6cqw); margin-top: 1.3cqw; }
+.tbt-flashcard-app.is-deck .fc-finish-message { font-size: calc(5.5cqw * var(--fit, 1)); }
+.tbt-flashcard-app.is-deck .fc-finish-sub { font-size: calc(max(14px, 2.6cqw) * var(--fit, 1)); margin-top: 1.3cqw; }
 .tbt-flashcard-app.is-deck .fc-again-btn {
   margin-top: 3.9cqw;
   height: max(40px, 7.1cqw);
@@ -596,11 +624,7 @@ body.admin-bar .tbt-flashcard-app.is-deck {
 
 .tbt-flashcard-app.is-deck .fc-nav {
   width: var(--deck-card-w);
-  margin-top: 24px;
-}
-
-.tbt-flashcard-app.is-deck .fc-progress {
-  background: rgba(255,255,255,0.8);
+  margin-top: 30px;
 }
 
 .tbt-flashcard-app.is-deck .fc-deck-bar {
@@ -621,13 +645,9 @@ body.admin-bar .tbt-flashcard-app.is-deck {
 }
 
 @media (max-width: 899px) {
-  body.tbtfc-deck-page {
-    background: #0856c9;
-  }
-
+  /* v2: white page, the card 8% smaller (0.95 x 0.97) so the stack shows. */
   .tbt-flashcard-app.is-deck {
-    background: #0856c9;
-    --deck-card-w: min(84vw, calc((100dvh - 190px) * 3 / 4.1));
+    --deck-card-w: calc(min(84vw, calc((100dvh - 190px) * 3 / 4.1)) * 0.92);
   }
 
   .tbt-flashcard-app.is-deck .fc-header {
@@ -638,9 +658,7 @@ body.admin-bar .tbt-flashcard-app.is-deck {
 
   .tbt-flashcard-app.is-deck .fc-set-title,
   .tbt-flashcard-app.is-deck .fc-deck-brand {
-    color: rgba(255,255,255,0.8);
     font-size: 10px;
-    opacity: 1;
   }
 
   .tbt-flashcard-app.is-deck .fc-card-scene {
@@ -650,51 +668,31 @@ body.admin-bar .tbt-flashcard-app.is-deck {
   .tbt-flashcard-app.is-deck .fc-card-face {
     border-radius: 18px;
     padding: 22px;
-    box-shadow: 0 14px 30px rgba(2, 20, 60, 0.35);
   }
 
-  /* Deeper navy so the back stands apart from the blue field. No stripes. */
-  .tbt-flashcard-app.is-deck .fc-card-back {
-    background:
-      linear-gradient(160deg, #0b2f6e, #061e4a);
-  }
-
-  /* No stack on phones, as in Swipe. */
-  .tbt-flashcard-app.is-deck .fc-stack { display: none; }
+  .tbt-flashcard-app.is-deck .fc-stack-card { border-radius: 18px; }
 
   .tbt-flashcard-app.is-deck .fc-hint { bottom: 14px; font-size: 11px; }
-  .tbt-flashcard-app.is-deck .fc-word { font-size: 10.7cqw; }
+  .tbt-flashcard-app.is-deck .fc-word { font-size: calc(10.7cqw * var(--fit, 1)); }
   .tbt-flashcard-app.is-deck .fc-audio-btn { width: 52px; height: 52px; margin-top: 22px; }
-  .tbt-flashcard-app.is-deck .fc-translation { font-size: 8.8cqw; }
-  .tbt-flashcard-app.is-deck .fc-phonetic { font-size: max(12px, 4cqw); }
-  .tbt-flashcard-app.is-deck .fc-example { font-size: max(14px, 5.2cqw); }
-  .tbt-flashcard-app.is-deck .fc-finish-message { font-size: 9.5cqw; }
-  .tbt-flashcard-app.is-deck .fc-finish-sub { font-size: max(14px, 4.8cqw); }
+  .tbt-flashcard-app.is-deck .fc-translation { font-size: calc(7.2cqw * var(--fit, 1)); }
+  .tbt-flashcard-app.is-deck .fc-phonetic { font-size: calc(max(12px, 4cqw) * var(--fit, 1)); }
+  .tbt-flashcard-app.is-deck .fc-example { font-size: calc(max(12px, 4.2cqw) * var(--fit, 1)); }
+  .tbt-flashcard-app.is-deck .fc-finish-message { font-size: calc(9.5cqw * var(--fit, 1)); }
+  .tbt-flashcard-app.is-deck .fc-finish-sub { font-size: calc(max(14px, 4.8cqw) * var(--fit, 1)); }
   .tbt-flashcard-app.is-deck .fc-again-btn { font-size: 14px; height: 44px; padding: 0 22px; margin-top: 20px; }
 
-  .tbt-flashcard-app.is-deck .fc-nav { margin-top: 18px; }
+  /* The pills and counter need a little more width than the smaller card. */
+  .tbt-flashcard-app.is-deck .fc-nav {
+    width: min(calc(100vw - 32px), max(var(--deck-card-w), 340px));
+    margin-top: 18px;
+    gap: 8px;
+  }
 
   .tbt-flashcard-app.is-deck .fc-nav-btn {
-    width: 50px;
-    height: 50px;
-    border-color: rgba(255,255,255,0.35);
-    background: rgba(255,255,255,0.1);
-    color: #ffffff;
+    height: 48px;
+    font-size: 14px;
   }
-
-  .tbt-flashcard-app.is-deck .fc-nav-btn:hover:not(:disabled) {
-    border-color: #ffffff;
-    color: #ffffff;
-    box-shadow: none;
-  }
-
-  .tbt-flashcard-app.is-deck .fc-progress {
-    background: rgba(255,255,255,0.14);
-    color: #ffffff;
-  }
-
-  .tbt-flashcard-app.is-deck .fc-deck-bar { background: rgba(255,255,255,0.15); }
-  .tbt-flashcard-app.is-deck .fc-deck-bar-fill { background: #ffffff; }
 }
 
 /* ── Reduced motion: no flip or slide (confetti is skipped in the JS). ── */
