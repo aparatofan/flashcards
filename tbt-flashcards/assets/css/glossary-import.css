@@ -1,0 +1,107 @@
+/*
+ * TBT Flashcards — Import glossaries screen (wp-admin). Plain wp-admin look.
+ */
+
+.tbt-fc-imp-intro {
+    max-width: 780px;
+}
+
+.tbt-fc-imp [hidden] {
+    display: none !important;
+}
+
+.tbt-fc-imp-counts {
+    font-size: 14px;
+}
+
+.tbt-fc-imp-progress {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 8px 0 16px;
+}
+
+.tbt-fc-imp-progress progress {
+    width: 320px;
+    max-width: 100%;
+    height: 14px;
+}
+
+.tbt-fc-imp-tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    margin: 16px 0 12px;
+}
+
+.tbt-fc-imp-chips {
+    display: inline-flex;
+    gap: 4px;
+}
+
+.tbt-fc-imp-chips .button[aria-pressed="true"] {
+    background: #2271b1;
+    border-color: #2271b1;
+    color: #fff;
+}
+
+.tbt-fc-imp-tally {
+    color: #50575e;
+}
+
+.tbt-fc-imp-actions {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-left: auto;
+}
+
+.tbt-fc-imp-table td,
+.tbt-fc-imp-table th {
+    vertical-align: top;
+}
+
+.tbt-fc-imp-table .num {
+    text-align: right;
+    width: 60px;
+}
+
+.tbt-fc-imp-preview ul {
+    margin: 0;
+}
+
+.tbt-fc-imp-preview li {
+    margin: 0 0 2px;
+}
+
+.tbt-fc-imp-meta,
+.tbt-fc-imp-post-status {
+    color: #646970;
+    font-size: 12px;
+}
+
+.tbt-fc-imp-view {
+    font-size: 12px;
+}
+
+.tbt-fc-imp-ok {
+    color: #00a32a;
+    font-weight: 600;
+}
+
+.tbt-fc-imp-bad {
+    color: #d63638;
+}
+
+.tbt-fc-imp-grey {
+    color: #646970;
+}
+
+.tbt-fc-imp-table tr.tbt-fc-imp-imported td {
+    color: #646970;
+}
+
+.tbt-fc-imp-confirm {
+    max-width: 780px;
+}
