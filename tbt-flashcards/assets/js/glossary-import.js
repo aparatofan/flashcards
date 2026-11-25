@@ -10,6 +10,8 @@
  * Paste words (2.4.1): one row per lesson still showing a wpDataTables
  * glossary, with its Quizlet/Multidecker links and a box for a Quizlet
  * export. The word count here is a preview; the server parses again.
+ * Translate to Polish (AI) (2.4.2) fills the box with "term<TAB>Polish"
+ * lines, 40 cards per request; nothing is stored until Save.
  */
 ( function () {
     'use strict';
@@ -565,6 +567,7 @@
     var pasteRows = {}; // post → { tr, saving, saved }
     var HEADER_TERM = /^(item|items|word|words|expression|expressions|english|phrase|phrases|term|terms|vocabulary|glossary)\b/i;
     var HEADER_TRANSLATION = /(translation|polish|polski|tłumaczenie)/i;
+    var AI_LABEL = 'Translate to Polish (AI)';
     var SEP_LABEL = { '\t': 'tab-separated', '-': 'separated by " - "', ';': 'separated by ";"', ',': 'separated by ","', '': 'no separator found: words only' };
 
     // Mirrors tbt_fc_paste_separator() / tbt_fc_parse_pasted() and, roughly,
@@ -596,12 +599,22 @@
         return best;
     }
 
-    function parsePaste( text ) {
+    // Mirrors tbt_fc_parse_pasted(): in tab mode a line without a tab
+    // belongs to the card above it; Definition:/Definicja: labels go;
+    // Example:/Przykład: and what follows is split off.
+    function pasteCards( text ) {
         var lines = String( text || '' ).replace( /^﻿/, '' ).split( /\r\n|\r|\n/ ).filter( function ( l ) {
             return '' !== l.trim();
         } );
         var sep = pasteSeparator( lines );
-        var rows = lines.map( function ( line ) {
+        var raw = [];
+        lines.forEach( function ( line ) {
+            if ( '\t' === sep && line.indexOf( '\t' ) < 0 ) {
+                if ( raw.length ) {
+                    raw[ raw.length - 1 ][ 1 ] = raw[ raw.length - 1 ][ 1 ].replace( /\s+$/, '' ) + ' ' + line.trim();
+                }
+                return;
+            }
             var at = -1;
             var len = 0;
             if ( '-' === sep ) {
@@ -612,7 +625,48 @@
                 at = line.indexOf( sep );
                 len = sep.length;
             }
-            return at < 0 ? [ line, '' ] : [ line.slice( 0, at ), line.slice( at + len ) ];
+            raw.push( at < 0 ? [ line, '' ] : [ line.slice( 0, at ), line.slice( at + len ) ] );
+        } );
+        var cards = raw.map( function ( pair ) {
+            var definition = pair[ 1 ];
+            var example = '';
+            var labelled = false;
+            var m = /^\s*(?:definition|definicja)\s*:\s*/i.exec( definition );
+            if ( m ) {
+                definition = definition.slice( m[ 0 ].length );
+                labelled = true;
+            }
+            m = /(?:^|\s)((?:example|przykład)\s*:[\s\S]*)$/i.exec( definition );
+            if ( m ) {
+                example = m[ 1 ].trim();
+                definition = definition.slice( 0, m.index ).replace( /\s+$/, '' );
+            }
+            return { term: pair[ 0 ], definition: definition, example: example, labelled: labelled };
+        } );
+        return { cards: cards, sep: sep, lines: lines.length };
+    }
+
+    // Mirrors tbt_fc_paste_english().
+    function looksEnglish( cards ) {
+        var total = 0;
+        var english = 0;
+        cards.forEach( function ( c ) {
+            var d = c.definition.trim();
+            if ( ! d ) {
+                return;
+            }
+            total++;
+            if ( ! /[ąćęłńóśźż]/i.test( d ) && ( c.labelled || d.split( /\s+/ ).length > 6 ) ) {
+                english++;
+            }
+        } );
+        return total > 0 && english * 2 > total;
+    }
+
+    function parsePaste( text ) {
+        var parsed = pasteCards( text );
+        var rows = parsed.cards.map( function ( c ) {
+            return [ c.term, c.definition ];
         } );
         var clean = function ( v ) {
             return v.replace( /<\/?[a-z][a-z0-9]*(?:\s[^<>]*)?\/?>/gi, ' ' ).replace( /[\s   ﻿]+/g, ' ' ).trim();
@@ -630,7 +684,7 @@
                 words++;
             }
         } );
-        return { words: words, lines: lines.length, sep: sep };
+        return { words: words, lines: parsed.lines, sep: parsed.sep, english: looksEnglish( parsed.cards ) };
     }
 
     function pending() {
@@ -666,7 +720,7 @@
     }
 
     function pasteRow( lesson ) {
-        var state = { saving: false, saved: false };
+        var state = { saving: false, saved: false, translating: false, note: false };
         var tr = el( 'tr', 'tbt-fc-paste-row' );
         var lessonTd = lessonCell( lesson );
         if ( lesson.edit ) {
@@ -698,22 +752,81 @@
         var save = el( 'button', 'button button-primary', 'Save' );
         save.type = 'button';
         act.appendChild( save );
+        var ai = el( 'button', 'button tbt-fc-paste-ai', AI_LABEL );
+        ai.type = 'button';
+        act.appendChild( ai );
         tr.appendChild( act );
 
         var preview = function () {
-            if ( state.saved ) {
-                save.disabled = true;
+            var off = state.saving || state.saved || state.translating || ! box.value.trim();
+            save.disabled = off;
+            ai.disabled = off;
+            if ( state.saved || state.translating || state.note ) {
                 return;
             }
             var p = parsePaste( box.value );
-            info.textContent = p.lines ? p.words + ( 1 === p.words ? ' word' : ' words' ) + ' read · ' + SEP_LABEL[ p.sep ] : '';
-            save.disabled = state.saving || state.saved || ! box.value.trim();
+            info.textContent = p.lines ? p.words + ( 1 === p.words ? ' word' : ' words' ) + ' read · ' + SEP_LABEL[ p.sep ] + ( p.english ? ' · English definitions found: consider Translate to Polish' : '' ) : '';
+            // The AI button leads while the box holds English definitions.
+            save.classList.toggle( 'button-primary', ! p.english );
+            ai.classList.toggle( 'button-primary', p.english );
         };
         box.addEventListener( 'input', function () {
             err.hidden = true;
+            state.note = false;
             preview();
         } );
         preview();
+
+        ai.addEventListener( 'click', function () {
+            if ( state.saving || state.saved || state.translating ) {
+                return;
+            }
+            var text = box.value;
+            var parts = [];
+            var count = 0;
+            var missing = 0;
+            state.translating = true;
+            state.note = false;
+            box.readOnly = true;
+            ai.textContent = 'Translating… (up to a minute)';
+            info.textContent = 'Translating…';
+            err.hidden = true;
+            preview();
+
+            var step = function ( from ) {
+                return api( 'translate', { post_id: lesson.post, text: text, from: from } ).then( function ( res ) {
+                    parts.push( String( res.text || '' ) );
+                    count += res.count || 0;
+                    missing += res.missing || 0;
+                    if ( null !== res.next && undefined !== res.next ) {
+                        info.textContent = 'Translating ' + count + ' of ' + res.total + '…';
+                        return step( res.next );
+                    }
+                } );
+            };
+            step( 0 ).then( function () {
+                // Only now, with every chunk back, does the box change.
+                box.value = parts.join( '\n' );
+                box.scrollTop = 0;
+                state.note = true;
+                info.textContent = count + ( 1 === count ? ' word' : ' words' ) + ' translated by AI. Check them, then press Save.';
+                if ( missing ) {
+                    info.appendChild( el( 'br' ) );
+                    info.appendChild( el( 'span', 'tbt-fc-imp-bad', missing + ( 1 === missing ? ' word' : ' words' ) + ' came back without a translation; they are at the end of their line, after the tab. Fill them in or delete the line.' ) );
+                }
+                save.classList.add( 'button-primary' );
+                ai.classList.remove( 'button-primary' );
+            } ).catch( function ( e ) {
+                state.note = false;
+                err.textContent = e.message;
+                err.hidden = false;
+            } ).then( function () {
+                state.translating = false;
+                box.readOnly = false;
+                ai.textContent = AI_LABEL;
+                preview();
+            } );
+        } );
 
         save.addEventListener( 'click', function () {
             if ( state.saving || state.saved ) {

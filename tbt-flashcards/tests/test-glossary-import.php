@@ -14,6 +14,16 @@ define( 'ABSPATH', __DIR__ . '/' );
 
 require __DIR__ . '/../includes/glossary-import-format.php';
 
+// glossary-translate.php: only its pure helpers are called here.
+define( 'TBT_FC_MAX_GENERATE_ITEMS', 40 );
+function add_action() {}
+require __DIR__ . '/../includes/glossary-translate.php';
+
+// 2.4.1's tests read pairs; parse_pasted() returns cards since 2.4.2.
+function pp( $text ) {
+    return tbt_fc_paste_pairs( tbt_fc_parse_pasted( $text ) );
+}
+
 $failures = 0;
 function check( $name, $condition, $detail = '' ) {
     global $failures;
@@ -163,38 +173,116 @@ check( 'multidecker: none', array() === tbt_fc_multidecker_slugs( 'https://multi
 $sample = "motionless\tnieruchomy\ntransition\tprzejście, przemiana\npull an all-nighter\tzarwać nockę\n";
 check(
     'paste: tab lines (Why we sleep sample)',
-    array( array( 'motionless', 'nieruchomy' ), array( 'transition', 'przejście, przemiana' ), array( 'pull an all-nighter', 'zarwać nockę' ) ) === tbt_fc_parse_pasted( $sample ),
-    var_export( tbt_fc_parse_pasted( $sample ), true )
+    array( array( 'motionless', 'nieruchomy' ), array( 'transition', 'przejście, przemiana' ), array( 'pull an all-nighter', 'zarwać nockę' ) ) === pp( $sample ),
+    var_export( pp( $sample ), true )
 );
-$p = tbt_fc_parse_pasted( "motionless - nieruchomy\npull an all-nighter – zarwać nockę - nie spać\r\nwell-being - dobrostan" );
+$p = pp( "motionless - nieruchomy\npull an all-nighter – zarwać nockę - nie spać\r\nwell-being - dobrostan" );
 check(
     'paste: " - " and " – " lines, first occurrence, hyphenated words kept',
     array( array( 'motionless', 'nieruchomy' ), array( 'pull an all-nighter', 'zarwać nockę - nie spać' ), array( 'well-being', 'dobrostan' ) ) === $p,
     var_export( $p, true )
 );
-$p = tbt_fc_parse_pasted( "motionless; nieruchomy\ntransition; przejście, przemiana\nsleep; spać" );
+$p = pp( "motionless; nieruchomy\ntransition; przejście, przemiana\nsleep; spać" );
 check(
     'paste: ";" lines beat a "," in one line',
     array( array( 'motionless', ' nieruchomy' ), array( 'transition', ' przejście, przemiana' ), array( 'sleep', ' spać' ) ) === $p,
     var_export( $p, true )
 );
-$p = tbt_fc_parse_pasted( "\n\nmotionless\tnieruchomy\n   \n\ntransition\tprzejście\n\n" );
+$p = pp( "\n\nmotionless\tnieruchomy\n   \n\ntransition\tprzejście\n\n" );
 check( 'paste: blank lines skipped', array( array( 'motionless', 'nieruchomy' ), array( 'transition', 'przejście' ) ) === $p, var_export( $p, true ) );
-$p = tbt_fc_parse_pasted( "motionless\tnieruchomy\nserendipity\ntransition\tprzejście" );
-check( 'paste: a line without the separator has no translation', array( 'serendipity', '' ) === $p[1], var_export( $p, true ) );
-check( 'paste: no separator anywhere', array( array( 'one', '' ), array( 'two words', '' ) ) === tbt_fc_parse_pasted( "one\ntwo words" ) );
+$p = pp( "motionless - nieruchomy\nserendipity\ntransition - przejście" );
+check( 'paste: a line without the separator has no translation (" - " mode)', array( 'serendipity', '' ) === $p[1], var_export( $p, true ) );
+$p = pp( "motionless\tnieruchomy\nserendipity\ntransition\tprzejście" );
+check( 'paste: tab mode, a line without a tab joins the card above (2.4.2)', array( array( 'motionless', 'nieruchomy serendipity' ), array( 'transition', 'przejście' ) ) === $p, var_export( $p, true ) );
+check( 'paste: no separator anywhere', array( array( 'one', '' ), array( 'two words', '' ) ) === pp( "one\ntwo words" ) );
 $two = $sample . "\nMotionless\tbez ruchu\nsnore\tchrapać\n";
-$r   = tbt_fc_wdt_clean_rows( tbt_fc_wdt_two_columns( tbt_fc_parse_pasted( $two ) )['rows'] );
+$r   = tbt_fc_wdt_clean_rows( tbt_fc_wdt_two_columns( pp( $two ) )['rows'] );
 check(
     'paste: two exports together, the repeated word kept once (first wins)',
     array( array( 'motionless', 'nieruchomy' ), array( 'transition', 'przejście, przemiana' ), array( 'pull an all-nighter', 'zarwać nockę' ), array( 'snore', 'chrapać' ) ) === $r,
     var_export( $r, true )
 );
-$r = tbt_fc_wdt_clean_rows( tbt_fc_wdt_two_columns( tbt_fc_parse_pasted( "Term\tTranslation\n" . $sample ) )['rows'] );
+$r = tbt_fc_wdt_clean_rows( tbt_fc_wdt_two_columns( pp( "Term\tTranslation\n" . $sample ) )['rows'] );
 check( 'paste: a header line is dropped', 3 === count( $r ) && 'motionless' === $r[0][0], var_export( $r, true ) );
-check( 'paste: blank text gives no rows', array() === tbt_fc_parse_pasted( " \n\n\t\n" ) && array() === tbt_fc_parse_pasted( '' ) );
+check( 'paste: blank text gives no rows', array() === pp( " \n\n\t\n" ) && array() === pp( '' ) );
 $long = tbt_fc_paste_limit( array( array( str_repeat( 'ą', 130 ), str_repeat( 'b', 200 ) ) ) );
 check( 'paste: limits cut to 120 / 190 characters', 120 === mb_strlen( $long[0][0], 'UTF-8' ) && 190 === strlen( $long[0][1] ) );
+
+// 14. Multi-line Quizlet cards (2.4.2).
+$cozy = "Coziness\tDefinition: A feeling of warmth, comfort, and safety, often associated with a pleasant atmosphere.\n"
+    . "Example: The candlelight and soft blankets created a sense of coziness in the room.\n"
+    . "Content\tDefinition: Feeling satisfied and happy with what you have.\n"
+    . "Example: After dinner with her family, she felt calm and content.\n";
+$c = tbt_fc_parse_pasted( $cozy );
+check( 'cards: the Coziness/Content sample gives 2 cards', 2 === count( $c ), var_export( $c, true ) );
+check(
+    'cards: definition without its label, example split off',
+    'Coziness' === $c[0]['term']
+        && 'A feeling of warmth, comfort, and safety, often associated with a pleasant atmosphere.' === $c[0]['definition']
+        && 'Example: The candlelight and soft blankets created a sense of coziness in the room.' === $c[0]['example']
+        && 'Content' === $c[1]['term']
+        && 'Feeling satisfied and happy with what you have.' === $c[1]['definition']
+        && 'Example: After dinner with her family, she felt calm and content.' === $c[1]['example'],
+    var_export( $c, true )
+);
+check(
+    'cards: a plain Save stores the definition without the example',
+    array( array( 'Coziness', 'A feeling of warmth, comfort, and safety, often associated with a pleasant atmosphere.' ), array( 'Content', 'Feeling satisfied and happy with what you have.' ) ) === tbt_fc_paste_pairs( $c )
+);
+check(
+    'cards: a plain two-column paste has no definitions to strip',
+    array( array( 'term' => 'motionless', 'definition' => 'nieruchomy', 'example' => '', 'labelled' => false ) ) === tbt_fc_parse_pasted( "motionless\tnieruchomy" )
+);
+$c = tbt_fc_parse_pasted( "Quizlet export, part 2\nmotionless\tnieruchomy\nsnore\tchrapać" );
+check( 'cards: a stray line before the first card is ignored', array( array( 'motionless', 'nieruchomy' ), array( 'snore', 'chrapać' ) ) === tbt_fc_paste_pairs( $c ), var_export( $c, true ) );
+$c = tbt_fc_parse_pasted( "przytulność\tdefinicja: uczucie ciepła i bezpieczeństwa\nPRZYKŁAD: W pokoju było przytulnie.\nzadowolony\tDefinicja:czujący satysfakcję Przykład: Była zadowolona." );
+check(
+    'cards: Definicja: / Przykład: labels, any case',
+    'uczucie ciepła i bezpieczeństwa' === $c[0]['definition'] && 'PRZYKŁAD: W pokoju było przytulnie.' === $c[0]['example']
+        && 'czujący satysfakcję' === $c[1]['definition'] && 'Przykład: Była zadowolona.' === $c[1]['example'],
+    var_export( $c, true )
+);
+check( 'cards: an example with no definition', array( 'term' => 'bask', 'definition' => '', 'example' => 'Example: Cats bask in the sun.', 'labelled' => false ) === tbt_fc_parse_pasted( "bask\tExample: Cats bask in the sun." )[0] );
+
+// 15. English definitions heuristic (2.4.2).
+check( 'english: the Coziness/Content sample', true === tbt_fc_paste_english( tbt_fc_parse_pasted( $cozy ) ) );
+check( 'english: Polish translations', false === tbt_fc_paste_english( tbt_fc_parse_pasted( $sample ) ) );
+check( 'english: long unlabelled English definitions', true === tbt_fc_paste_english( tbt_fc_parse_pasted( "content\tfeeling satisfied and happy with what you have\nsnore\tto breathe noisily through your nose while sleeping" ) ) );
+check( 'english: short English glosses are not flagged', false === tbt_fc_paste_english( tbt_fc_parse_pasted( "content\thappy\nsnore\tbreathe noisily" ) ) );
+check( 'english: no definitions', false === tbt_fc_paste_english( tbt_fc_parse_pasted( "one\ntwo" ) ) );
+
+// 16. Cards to translate (2.4.2).
+$t = tbt_fc_paste_translatable( tbt_fc_parse_pasted( "Term\tDefinition\n" . $cozy . "\tno term\n" ) );
+check( 'translatable: header and termless cards dropped', array( 'Coziness', 'Content' ) === array_column( $t, 'term' ), var_export( $t, true ) );
+check( 'translatable: plain words', array( 'happy', 'take for granted' ) === array_column( tbt_fc_paste_translatable( tbt_fc_parse_pasted( "happy\n take  for granted \n" ) ), 'term' ) );
+
+// 17. Translation prompt and alignment (2.4.2).
+$prompt = tbt_fc_translate_user_prompt(
+    array(
+        array( 'term' => 'Content', 'definition' => 'Feeling satisfied.', 'example' => 'Example: She felt content.' ),
+        array( 'term' => 'bask in something', 'definition' => '', 'example' => 'Example: Cats bask in the sun.' ),
+        array( 'term' => 'snore', 'definition' => '', 'example' => '' ),
+    ),
+    '10 Happy Words Around the World'
+);
+check(
+    'prompt: title, numbered items, definition first, example only without one',
+    "Lesson: 10 Happy Words Around the World\n\nItems:\n1. Content — Feeling satisfied.\n2. bask in something — Example: Cats bask in the sun.\n3. snore" === $prompt,
+    $prompt
+);
+check( 'prompt: no title', 0 === strpos( tbt_fc_translate_user_prompt( array(), '' ), 'Lesson: no title given.' ) );
+$schema = tbt_fc_translate_schema( 3 );
+check( 'schema: translations index + translation, strict', array( 'index', 'translation' ) === $schema['properties']['translations']['items']['required'] && false === $schema['additionalProperties'] && 3 === $schema['properties']['translations']['maxItems'] );
+$a = tbt_fc_align_translations( 4, array(
+    array( 'index' => 3, 'translation' => 'chrapać' ),
+    array( 'index' => 1, 'translation' => ' „zadowolony” ' ),
+    array( 'index' => 1, 'translation' => 'treść' ),
+    array( 'index' => 9, 'translation' => 'extra' ),
+    'junk',
+) );
+check( 'align: by index, dropped items empty, first wins, quotes trimmed', array( 'zadowolony', '', 'chrapać', '' ) === $a, var_export( $a, true ) );
+check( 'align: plain text on one line, 190 characters', 'a b' === tbt_fc_align_translations( 1, array( array( 'index' => 1, 'translation' => "<b>a</b>\nb" ) ) )[0] && 190 === mb_strlen( tbt_fc_align_translations( 1, array( array( 'index' => 1, 'translation' => str_repeat( 'ż', 300 ) ) ) )[0], 'UTF-8' ) );
+check( 'align: nothing back', array( '', '' ) === tbt_fc_align_translations( 2, array() ) );
 
 echo $failures ? "\n$failures failure(s)\n" : "\nAll tests passed\n";
 exit( $failures ? 1 : 0 );

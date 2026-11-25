@@ -611,19 +611,36 @@ function tbt_fc_paste_lines( $text ) {
 }
 
 /**
- * Raw [term, translation] pairs from a pasted export, one card per line,
- * split at the first separator (see tbt_fc_paste_separator()). A line
- * without the separator has an empty translation. Cleaning is left to
- * tbt_fc_wdt_two_columns() (header) and tbt_fc_wdt_clean_rows().
+ * Cards from a pasted export, one per line, split at the first separator
+ * (see tbt_fc_paste_separator()).
+ *
+ * In tab mode (Quizlet's export) a line without a tab belongs to the card
+ * above it: Quizlet keeps the line breaks inside a definition, e.g.
+ * "Definition: …" then "Example: …" on the next line. It is joined with a
+ * space; before the first card it is ignored. In the other modes every line
+ * is a card, and a line without the separator has an empty definition.
+ *
+ * A leading "Definition:" / "Definicja:" label is removed; from "Example:" /
+ * "Przykład:" (label included) to the end goes to `example`, which is only
+ * context for the AI and never stored. `labelled` says whether a
+ * Definition label was there (tbt_fc_paste_english()).
+ * assets/js/glossary-import.js mirrors this for its preview.
  *
  * @param string $text Pasted text.
- * @return array[]
+ * @return array[] { term, definition, example, labelled }
  */
 function tbt_fc_parse_pasted( $text ) {
     $lines = tbt_fc_paste_lines( $text );
     $sep   = tbt_fc_paste_separator( $lines );
-    $rows  = array();
+    $raw   = array();
     foreach ( $lines as $line ) {
+        if ( "\t" === $sep && false === strpos( $line, "\t" ) ) {
+            if ( $raw ) {
+                $last          = count( $raw ) - 1;
+                $raw[ $last ][1] = rtrim( $raw[ $last ][1] ) . ' ' . trim( $line );
+            }
+            continue;
+        }
         if ( '-' === $sep ) {
             $parts = preg_split( '/ [-–] /u', $line, 2 );
             $parts = $parts ? $parts : array( $line ); // Invalid UTF-8.
@@ -632,9 +649,98 @@ function tbt_fc_parse_pasted( $text ) {
         } else {
             $parts = array( $line );
         }
-        $rows[] = array( $parts[0], isset( $parts[1] ) ? $parts[1] : '' );
+        $raw[] = array( $parts[0], isset( $parts[1] ) ? $parts[1] : '' );
     }
-    return $rows;
+
+    $cards = array();
+    foreach ( $raw as $pair ) {
+        $definition = $pair[1];
+        $example    = '';
+        $labelled   = false;
+        if ( preg_match( '/^\s*(?:definition|definicja)\s*:\s*/iu', $definition, $m ) ) {
+            $definition = substr( $definition, strlen( $m[0] ) );
+            $labelled   = true;
+        }
+        if ( preg_match( '/(?:^|\s)((?:example|przykład)\s*:.*)$/isu', $definition, $m, PREG_OFFSET_CAPTURE ) ) {
+            $example    = trim( $m[1][0] );
+            $definition = rtrim( substr( $definition, 0, $m[0][1] ) );
+        }
+        $cards[] = array(
+            'term'       => $pair[0],
+            'definition' => $definition,
+            'example'    => $example,
+            'labelled'   => $labelled,
+        );
+    }
+    return $cards;
+}
+
+/**
+ * [term, translation] pairs for a plain Save: the definition, without the
+ * example, stands in for the translation. Cleaning is left to
+ * tbt_fc_wdt_two_columns() (header) and tbt_fc_wdt_clean_rows().
+ *
+ * @param array[] $cards Cards from tbt_fc_parse_pasted().
+ * @return array[]
+ */
+function tbt_fc_paste_pairs( array $cards ) {
+    return array_map( function ( $card ) {
+        return array( $card['term'], $card['definition'] );
+    }, $cards );
+}
+
+/**
+ * Whether more than half of the definitions look English: no Polish
+ * diacritics, and a "Definition:" label or more than 6 words.
+ *
+ * @param array[] $cards Cards from tbt_fc_parse_pasted().
+ * @return bool
+ */
+function tbt_fc_paste_english( array $cards ) {
+    $total   = 0;
+    $english = 0;
+    foreach ( $cards as $card ) {
+        $definition = trim( $card['definition'] );
+        if ( '' === $definition ) {
+            continue;
+        }
+        $total++;
+        $words = preg_split( '/\s+/u', $definition, -1, PREG_SPLIT_NO_EMPTY );
+        if ( ! preg_match( '/[ąćęłńóśźż]/iu', $definition ) && ( ! empty( $card['labelled'] ) || count( $words ) > 6 ) ) {
+            $english++;
+        }
+    }
+    return $total > 0 && $english * 2 > $total;
+}
+
+/**
+ * Cards to translate: the header line (2.4.0's rule) and cards without a
+ * term dropped; whitespace collapsed; terms cut to 120 characters.
+ *
+ * @param array[] $cards Cards from tbt_fc_parse_pasted().
+ * @return array[] { term, definition, example }
+ */
+function tbt_fc_paste_translatable( array $cards ) {
+    $picked = tbt_fc_wdt_two_columns( tbt_fc_paste_pairs( $cards ) );
+    if ( null !== $picked['header_dropped'] ) {
+        array_shift( $cards );
+    }
+    $squash = function ( $value ) {
+        return trim( (string) preg_replace( '/[\s\x{00A0}\x{2007}\x{202F}\x{FEFF}]+/u', ' ', (string) $value ) );
+    };
+    $out = array();
+    foreach ( $cards as $card ) {
+        $term = trim( mb_substr( $squash( $card['term'] ), 0, 120, 'UTF-8' ) );
+        if ( '' === $term ) {
+            continue;
+        }
+        $out[] = array(
+            'term'       => $term,
+            'definition' => $squash( $card['definition'] ),
+            'example'    => $squash( $card['example'] ),
+        );
+    }
+    return $out;
 }
 
 /**

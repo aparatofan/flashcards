@@ -720,7 +720,7 @@ function tbt_fc_wdt_rest_paste( WP_REST_Request $request ) {
     if ( count( tbt_fc_paste_lines( $text ) ) > TBT_FC_WDT_MAX_ROWS ) {
         return new WP_Error( 'tbt_fc_too_long', sprintf( 'Paste at most %d lines at a time.', TBT_FC_WDT_MAX_ROWS ), array( 'status' => 400 ) );
     }
-    $picked = tbt_fc_wdt_two_columns( tbt_fc_parse_pasted( $text ) );
+    $picked = tbt_fc_wdt_two_columns( tbt_fc_paste_pairs( tbt_fc_parse_pasted( $text ) ) );
     $rows   = tbt_fc_paste_limit( tbt_fc_wdt_clean_rows( $picked['rows'] ) );
     if ( ! $rows ) {
         return new WP_Error( 'tbt_fc_no_words', 'No words found. Paste the Quizlet export: one word per line, word and translation separated by a tab.', array( 'status' => 400 ) );

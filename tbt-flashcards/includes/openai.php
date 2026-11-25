@@ -144,6 +144,37 @@ function tbt_fc_generate( array $items, $context = '' ) {
         );
     }
 
+    $text = tbt_fc_openai_json_request(
+        tbt_fc_openai_developer_prompt(),
+        tbt_fc_openai_user_prompt( $items, $context ),
+        'tbt_flashcards',
+        tbt_fc_openai_schema( count( $items ) )
+    );
+    if ( is_wp_error( $text ) ) {
+        return $text;
+    }
+
+    $data = json_decode( $text, true );
+    if ( ! is_array( $data ) || ! isset( $data['cards'] ) || ! is_array( $data['cards'] ) ) {
+        return new WP_Error( 'tbt_fc_openai_cards_json', __( 'The generated cards were not readable. Try again.', 'tbt-flashcards' ), array( 'status' => 502 ) );
+    }
+
+    return tbt_fc_align_generated( $items, $data['cards'] );
+}
+
+/**
+ * One Responses API call with a strict JSON schema; returns the output text
+ * (JSON, still encoded). Shared by the card generator and the glossary
+ * translation (2.4.2); the request is exactly the one tbt_fc_generate()
+ * always sent.
+ *
+ * @param string $developer Developer prompt.
+ * @param string $user      User prompt.
+ * @param string $name      Schema name.
+ * @param array  $schema    Strict JSON schema.
+ * @return string|WP_Error
+ */
+function tbt_fc_openai_json_request( $developer, $user, $name, array $schema ) {
     $api_key = tbt_fc_openai_api_key();
     if ( '' === $api_key ) {
         return new WP_Error( 'tbt_fc_missing_api_key', __( 'The OpenAI API key could not be found. Ask the site administrator to add it.', 'tbt-flashcards' ), array( 'status' => 500 ) );
@@ -162,7 +193,7 @@ function tbt_fc_generate( array $items, $context = '' ) {
                 'content' => array(
                     array(
                         'type' => 'input_text',
-                        'text' => tbt_fc_openai_developer_prompt(),
+                        'text' => $developer,
                     ),
                 ),
             ),
@@ -171,7 +202,7 @@ function tbt_fc_generate( array $items, $context = '' ) {
                 'content' => array(
                     array(
                         'type' => 'input_text',
-                        'text' => tbt_fc_openai_user_prompt( $items, $context ),
+                        'text' => $user,
                     ),
                 ),
             ),
@@ -179,9 +210,9 @@ function tbt_fc_generate( array $items, $context = '' ) {
         'text'              => array(
             'format' => array(
                 'type'   => 'json_schema',
-                'name'   => 'tbt_flashcards',
+                'name'   => $name,
                 'strict' => true,
-                'schema' => tbt_fc_openai_schema( count( $items ) ),
+                'schema' => $schema,
             ),
         ),
     );
@@ -217,17 +248,7 @@ function tbt_fc_generate( array $items, $context = '' ) {
         return new WP_Error( 'tbt_fc_openai_invalid_json', __( 'OpenAI returned an unreadable response. Try again.', 'tbt-flashcards' ), array( 'status' => 502 ) );
     }
 
-    $text = tbt_fc_openai_output_text( $decoded );
-    if ( is_wp_error( $text ) ) {
-        return $text;
-    }
-
-    $data = json_decode( $text, true );
-    if ( ! is_array( $data ) || ! isset( $data['cards'] ) || ! is_array( $data['cards'] ) ) {
-        return new WP_Error( 'tbt_fc_openai_cards_json', __( 'The generated cards were not readable. Try again.', 'tbt-flashcards' ), array( 'status' => 502 ) );
-    }
-
-    return tbt_fc_align_generated( $items, $data['cards'] );
+    return tbt_fc_openai_output_text( $decoded );
 }
 
 /**
