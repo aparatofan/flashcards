@@ -20,6 +20,10 @@
     --tbt-fc-gl-ring: 0 0 0 3px rgba(8, 86, 201, .18);
     --tbt-fc-gl-font-ui: "Roboto", system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
     --tbt-fc-gl-font-content: "Roboto Slab", Georgia, "Times New Roman", serif;
+    --tbt-fc-gl-font-mono: "Roboto Mono", ui-monospace, Menlo, Consolas, monospace;
+    --tbt-fc-gl-blue-dark: var(--tbt-blue-dark, #063F94);
+    --tbt-fc-gl-ok: #16803C;
+    --tbt-fc-gl-err: #C62828;
 
     color: var(--tbt-fc-gl-ink);
     font: 400 16px/1.5 var(--tbt-fc-gl-font-ui);
@@ -36,7 +40,8 @@
     box-sizing: border-box;
 }
 
-.tbt-fc-gl [hidden] {
+.tbt-fc-gl [hidden],
+.tbt-fc-gl[hidden] {
     display: none !important;
 }
 
@@ -309,6 +314,282 @@
     font-variant-numeric: tabular-nums;
     min-width: 120px;
     text-align: center;
+}
+
+/* My Dictionary column (2.4.0): logged-in students with TBT Dictionary. */
+.tbt-fc-gl .tbt-fc-gl-table th.tbt-fc-gl-act {
+    width: 1%;
+}
+
+.tbt-fc-gl .tbt-fc-gl-table td.tbt-fc-gl-act {
+    width: 1%;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    white-space: nowrap;
+    text-align: right;
+    font-family: var(--tbt-fc-gl-font-ui);
+}
+
+.tbt-fc-gl .tbt-fc-gl-add {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 34px;
+    margin: 0;
+    padding: 0 12px;
+    border: 1px solid var(--tbt-fc-gl-border);
+    border-radius: 999px;
+    background: var(--tbt-fc-gl-page);
+    color: var(--tbt-fc-gl-blue);
+    font: 600 13px/1 var(--tbt-fc-gl-font-ui);
+    text-transform: none;
+    letter-spacing: normal;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.tbt-fc-gl .tbt-fc-gl-add:hover {
+    background: var(--tbt-fc-gl-selected);
+    border-color: var(--tbt-fc-gl-blue);
+}
+
+.tbt-fc-gl .tbt-fc-gl-add:focus-visible {
+    outline: none;
+    box-shadow: var(--tbt-fc-gl-ring);
+}
+
+.tbt-fc-gl .tbt-fc-gl-add svg {
+    flex: none;
+}
+
+.tbt-fc-gl .tbt-fc-gl-in {
+    display: inline-flex;
+    align-items: center;
+    height: 34px;
+    padding: 0 10px;
+    color: var(--tbt-fc-gl-ok);
+    font: 600 13px/1 var(--tbt-fc-gl-font-ui);
+    white-space: nowrap;
+    border-radius: 999px;
+}
+
+.tbt-fc-gl .tbt-fc-gl-in:focus {
+    outline: none;
+}
+
+.tbt-fc-gl .tbt-fc-gl-in:focus-visible {
+    box-shadow: var(--tbt-fc-gl-ring);
+}
+
+/* Below 600px the My Dictionary cell wraps under the translation. */
+@media (max-width: 599px) {
+    .tbt-fc-gl[data-dict="1"] .tbt-fc-gl-table thead tr,
+    .tbt-fc-gl[data-dict="1"] .tbt-fc-gl-table tbody tr {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+
+    .tbt-fc-gl[data-dict="1"] .tbt-fc-gl-table th.tbt-fc-gl-act {
+        display: none;
+    }
+
+    .tbt-fc-gl[data-dict="1"] .tbt-fc-gl-table tbody tr {
+        border-bottom: 1px solid var(--tbt-fc-gl-border);
+    }
+
+    .tbt-fc-gl[data-dict="1"] .tbt-fc-gl-table tbody tr:nth-child(even) {
+        background: var(--tbt-fc-gl-stripe);
+    }
+
+    .tbt-fc-gl[data-dict="1"] .tbt-fc-gl-table td {
+        width: auto;
+        border-bottom: 0;
+        overflow-wrap: anywhere;
+    }
+
+    .tbt-fc-gl[data-dict="1"] .tbt-fc-gl-table td.tbt-fc-gl-act {
+        grid-column: 2;
+        width: auto;
+        padding-top: 0;
+        padding-bottom: 12px;
+        text-align: left;
+    }
+
+    .tbt-fc-gl[data-dict="1"] .tbt-fc-gl-table td.tbt-fc-gl-act:empty {
+        display: none;
+    }
+
+    .tbt-fc-gl[data-dict="1"] .tbt-fc-gl-table .tbt-fc-gl-empty td {
+        grid-column: 1 / -1;
+    }
+}
+
+/* Modal and toast live on <body>, each with class tbt-fc-gl for the tokens. */
+.tbt-fc-gl.tbt-fc-gl-ov {
+    position: fixed;
+    inset: 0;
+    z-index: 100000;
+    display: grid;
+    place-items: center;
+    margin: 0;
+    padding: 16px;
+    background: rgba(16, 24, 40, .45);
+    overflow-y: auto;
+}
+
+.tbt-fc-gl .tbt-fc-gl-modal {
+    width: min(480px, 100%);
+    padding: 28px;
+    border-radius: 22px;
+    background: var(--tbt-fc-gl-page);
+    box-shadow: 0 10px 28px rgba(8, 86, 201, .12);
+    text-align: left;
+}
+
+.tbt-fc-gl .tbt-fc-gl-mtitle {
+    margin: 0 0 4px;
+    padding: 0;
+    color: var(--tbt-fc-gl-blue);
+    font: 700 20px/1.2 var(--tbt-fc-gl-font-mono);
+    letter-spacing: .03em;
+    text-transform: uppercase;
+}
+
+.tbt-fc-gl .tbt-fc-gl-mword {
+    margin: 16px 0 2px;
+    color: var(--tbt-fc-gl-ink);
+    font: 600 22px/1.3 var(--tbt-fc-gl-font-content);
+    overflow-wrap: anywhere;
+}
+
+.tbt-fc-gl .tbt-fc-gl-field {
+    margin-top: 18px;
+}
+
+.tbt-fc-gl .tbt-fc-gl-label {
+    display: block;
+    margin: 0 0 8px;
+    padding: 0;
+    color: var(--tbt-fc-gl-muted);
+    font: 700 13px/1 var(--tbt-fc-gl-font-ui);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+}
+
+.tbt-fc-gl .tbt-fc-gl-minput {
+    display: block;
+    width: 100%;
+    height: 48px;
+    margin: 0;
+    padding: 0 14px;
+    border: 1px solid var(--tbt-fc-gl-border);
+    border-radius: 12px;
+    background: var(--tbt-fc-gl-input);
+    box-shadow: none;
+    color: var(--tbt-fc-gl-ink);
+    font: 400 16px/1.2 var(--tbt-fc-gl-font-ui);
+}
+
+.tbt-fc-gl .tbt-fc-gl-minput:focus {
+    outline: none;
+    background: var(--tbt-fc-gl-page);
+    border-color: var(--tbt-fc-gl-blue);
+    box-shadow: var(--tbt-fc-gl-ring);
+}
+
+.tbt-fc-gl .tbt-fc-gl-hint {
+    margin-top: 8px;
+    color: var(--tbt-fc-gl-muted);
+    font: 400 14px/1.45 var(--tbt-fc-gl-font-ui);
+}
+
+.tbt-fc-gl .tbt-fc-gl-hint strong {
+    color: var(--tbt-fc-gl-ink);
+    font-weight: 700;
+}
+
+.tbt-fc-gl .tbt-fc-gl-hint.tbt-fc-gl-err {
+    color: var(--tbt-fc-gl-err);
+}
+
+.tbt-fc-gl .tbt-fc-gl-mact {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 24px;
+}
+
+.tbt-fc-gl .tbt-fc-gl-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 44px;
+    margin: 0;
+    padding: 0 22px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--tbt-fc-gl-blue);
+    color: #fff;
+    font: 600 14px/1 var(--tbt-fc-gl-font-ui);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+
+.tbt-fc-gl .tbt-fc-gl-btn:hover:not(:disabled) {
+    background: var(--tbt-fc-gl-blue-dark);
+}
+
+.tbt-fc-gl .tbt-fc-gl-btn:focus-visible {
+    outline: none;
+    box-shadow: var(--tbt-fc-gl-ring);
+}
+
+.tbt-fc-gl .tbt-fc-gl-btn:disabled {
+    opacity: .6;
+    cursor: progress;
+}
+
+.tbt-fc-gl .tbt-fc-gl-btn.tbt-fc-gl-ghost {
+    border: 1px solid var(--tbt-fc-gl-border);
+    background: var(--tbt-fc-gl-page);
+    color: var(--tbt-fc-gl-blue);
+}
+
+.tbt-fc-gl .tbt-fc-gl-btn.tbt-fc-gl-ghost:hover {
+    border-color: var(--tbt-fc-gl-blue);
+    background: var(--tbt-fc-gl-selected);
+}
+
+.tbt-fc-gl.tbt-fc-gl-toast {
+    position: fixed;
+    left: 50%;
+    bottom: 24px;
+    z-index: 100001;
+    max-width: calc(100% - 32px);
+    margin: 0;
+    padding: 12px 20px;
+    border-radius: 999px;
+    background: var(--tbt-fc-gl-ok);
+    color: #fff;
+    font: 600 15px/1.3 var(--tbt-fc-gl-font-ui);
+    text-align: center;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, .18);
+    transform: translateX(-50%);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .tbt-fc-gl.tbt-fc-gl-toast-in {
+        animation: tbt-fc-gl-toast-up .25s cubic-bezier(.22, .61, .36, 1);
+    }
+
+    @keyframes tbt-fc-gl-toast-up {
+        from {
+            opacity: 0;
+            transform: translate(-50%, 12px);
+        }
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -132,6 +132,12 @@ try {
 $rows = tbt_fc_glossary_rows( array_merge( array( array( card( 'habit', 'przyzwyczajenie' ) ) ), tbt_fc_glossary_url_sets( array( $a ) ) ) );
 check( 'set word wins over file word', array( array( 'habit', 'przyzwyczajenie' ), array( 'Free', 'darmowy' ) ) === $rows, var_export( $rows, true ) );
 
+// 11. Stored rows (_tbt_fc_glossary, 2.4.0): only lists of two strings.
+$stored = tbt_fc_glossary_decode_stored( '[["reach","sięgać"],["bad"],["x",1],"y",["slouch","garbić się"],["a","b","c"]]' );
+check( 'stored rows validated', array( array( 'reach', 'sięgać' ), array( 'slouch', 'garbić się' ) ) === $stored, var_export( $stored, true ) );
+check( 'stored rows: not JSON', array() === tbt_fc_glossary_decode_stored( 'nope' ) );
+check( 'stored rows: empty', array() === tbt_fc_glossary_decode_stored( '' ) );
+
 unlink( $uploads_dir . '/2026/11/a.csv' );
 rmdir( $uploads_dir . '/2026/11' );
 rmdir( $uploads_dir . '/2026' );

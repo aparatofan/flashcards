@@ -1,5 +1,15 @@
 # Changelog — TBT Flashcards
 
+## 2.4.0 — 25 Nov 2026
+
+Lesson glossaries without wpDataTables, plus "+ My Dictionary". Spec: `docs/SPEC-2.4.0.md`.
+
+- **Import glossaries** (Flashcards → Import glossaries, administrators; shown while a lesson still uses a wpDataTables glossary or an import can be undone). **Read all** reads every old glossary (Google Sheet via its CSV export, `.xlsx`/`.csv` in uploads including the old host's paths, or a wpDataTables manual table), 10 tables per request, with a preview, the dropped header and the columns used. **Import selected** stores the rows on the lesson (`_tbt_fc_glossary`, `_tbt_fc_glossary_src`) and swaps the shortcode for `[tbt_flashcards_glossary source="post" domain="…"]`, saving `post_content` directly (no revision, no `save_post`). The old content is kept once in `_tbt_fc_wdt_backup`; **Undo** / **Undo all** restore it. Divi's `_et_pb_old_content` copy gets the same change (and its own backup). **Copy failed list** for the ones to fix by hand. Tables 117, 185, 277, 278, 280, 281, 282, 289 and 291 are never glossaries. A table inside a Divi global module is not imported.
+- **`source="post"`** (and `post="123"`) on `[tbt_flashcards_glossary]`: the stored rows, after sets and CSVs.
+- **My Dictionary column** for logged-in students when TBT Dictionary 0.3.0+ is active: one `POST /lookup` on load (split per 300 terms), **✓ In my dictionary** or a **+ My Dictionary** button that opens the Add to My Dictionary modal (translation, group with the student's groups, last group remembered per site). Adds through Dictionary's `POST /words`, then `POST /words/{id}/fill`. Logged out: no column. Below 600px the button wraps under the translation.
+- **Safety net:** without wpDataTables, `[wpdatatable]` renders nothing (admins see a grey "Old wpDataTables table (id N) — not shown").
+- New files: `includes/glossary-import.php`, `includes/glossary-import-format.php`, `assets/js/glossary-import.js`, `assets/css/glossary-import.css`, `tests/test-glossary-import.php`.
+
 ## 2.3.0 — 20 Nov 2026
 
 Unified card style, shared with TBT Swipe 1.17.0 (Card style contract v1).

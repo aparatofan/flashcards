@@ -1,12 +1,16 @@
 <?php
 /**
- * [tbt_flashcards_glossary ids="361,362" urls="https://…/a.csv" domain="gi"]
+ * [tbt_flashcards_glossary ids="361,362" urls="https://…/a.csv" source="post" domain="gi"]
  *
- * A lesson's glossary, read live from its flashcard sets and from CSV files
- * in this site's uploads (sets first, then files): expression and
- * Polish translation. The server builds the rows and embeds them as JSON on
- * the root; assets/js/glossary.js renders search, sort and paging from that
- * data. Read-only, no REST call.
+ * A lesson's glossary, read live from its flashcard sets, from CSV files
+ * in this site's uploads and from the rows stored on the lesson
+ * (_tbt_fc_glossary, written by the 2.4.0 import), in that order:
+ * expression and Polish translation. The server builds the rows and embeds
+ * them as JSON on the root; assets/js/glossary.js renders search, sort and
+ * paging from that data.
+ *
+ * For logged-in students, when TBT Dictionary 0.3.0+ is active, a third
+ * column adds words to My Dictionary through Dictionary's own REST routes.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -126,6 +130,55 @@ function tbt_fc_glossary_url_sets( array $urls ) {
 }
 
 /**
+ * Validate stored glossary rows (_tbt_fc_glossary): a JSON list of
+ * [expression, translation] string pairs. Anything else is skipped.
+ *
+ * Pure (no WordPress).
+ *
+ * @param string $json Meta value.
+ * @return array[] List of array( expression, translation ).
+ */
+function tbt_fc_glossary_decode_stored( $json ) {
+    $list = json_decode( (string) $json, true );
+    if ( ! is_array( $list ) ) {
+        return array();
+    }
+    $rows = array();
+    foreach ( $list as $row ) {
+        if ( is_array( $row ) && 2 === count( $row ) && isset( $row[0], $row[1] ) && is_string( $row[0] ) && is_string( $row[1] ) ) {
+            $rows[] = array( $row[0], $row[1] );
+        }
+    }
+    return $rows;
+}
+
+/**
+ * Stored rows as a card list, so tbt_fc_glossary_rows() can merge them.
+ *
+ * @param int $post_id Post ID.
+ * @return array[]
+ */
+function tbt_fc_glossary_post_set( $post_id ) {
+    $cards = array();
+    if ( $post_id > 0 ) {
+        foreach ( tbt_fc_glossary_decode_stored( (string) get_post_meta( $post_id, '_tbt_fc_glossary', true ) ) as $row ) {
+            $cards[] = array( 'word' => $row[0], 'translation' => $row[1] );
+        }
+    }
+    return $cards;
+}
+
+/**
+ * Whether the My Dictionary column shows: logged in, and TBT Dictionary
+ * 0.3.0 or later (its POST /lookup) is active.
+ *
+ * @return bool
+ */
+function tbt_fc_glossary_dict_on() {
+    return is_user_logged_in() && defined( 'TBTDIC_VERSION' ) && version_compare( TBTDIC_VERSION, '0.3.0', '>=' );
+}
+
+/**
  * Enqueue the glossary's CSS and JS once per request.
  */
 function tbt_fc_enqueue_glossary_assets() {
@@ -167,8 +220,12 @@ function tbt_fc_render_glossary( $atts ) {
     $atts = shortcode_atts( array(
         'ids'    => '',
         'urls'   => '',
+        'source' => '',
+        'post'   => '',
         'domain' => '',
     ), $atts, 'tbt_flashcards_glossary' );
+    // Letters only, so curly quotes Divi may leave around the value do no harm.
+    $from_post = 'post' === strtolower( preg_replace( '/&#?\w+;|[^a-z]/i', '', (string) $atts['source'] ) );
 
     $sets = array();
     foreach ( tbt_fc_glossary_parse_ids( $atts['ids'] ) as $id ) {
@@ -179,11 +236,21 @@ function tbt_fc_render_glossary( $atts ) {
         $sets[] = tbt_fc_get_cards( $id );
     }
     $sets = array_merge( $sets, tbt_fc_glossary_url_sets( tbt_fc_glossary_parse_urls( $atts['urls'] ) ) );
+    if ( $from_post ) {
+        $post_id = (int) preg_replace( '/\D/', '', (string) $atts['post'] );
+        if ( $post_id <= 0 ) {
+            $post_id = in_the_loop() ? (int) get_the_ID() : (int) get_queried_object_id();
+        }
+        $sets[] = tbt_fc_glossary_post_set( $post_id );
+    }
 
     $rows = tbt_fc_glossary_rows( $sets );
     if ( empty( $rows ) ) {
         if ( current_user_can( 'manage_options' ) ) {
-            return '<p class="tbt-fc-gl-notice">' . esc_html__( 'Glossary: no flashcards found for these sets.', 'tbt-flashcards' ) . '</p>';
+            $notice = $from_post && '' === trim( $atts['ids'] . $atts['urls'] )
+                ? __( 'Glossary: no rows stored on this lesson.', 'tbt-flashcards' )
+                : __( 'Glossary: no flashcards found for these sets.', 'tbt-flashcards' );
+            return '<p class="tbt-fc-gl-notice">' . esc_html( $notice ) . '</p>';
         }
         return '';
     }
@@ -207,11 +274,42 @@ function tbt_fc_render_glossary( $atts ) {
         'clear'      => __( 'Clear search', 'tbt-flashcards' ),
     );
 
+    $dict = tbt_fc_glossary_dict_on();
+    if ( $dict ) {
+        $i18n += array(
+            'dictAdd'      => __( 'My Dictionary', 'tbt-flashcards' ),
+            'dictAddLabel' => __( 'Add %s to My Dictionary', 'tbt-flashcards' ),
+            'dictIn'       => __( '✓ In my dictionary', 'tbt-flashcards' ),
+            'dictInTitle'  => __( 'In %s', 'tbt-flashcards' ),
+            'dictTitle'    => __( 'Add to My Dictionary', 'tbt-flashcards' ),
+            'dictTrans'    => __( 'Translation', 'tbt-flashcards' ),
+            'dictGroup'    => __( 'Group', 'tbt-flashcards' ),
+            'dictCancel'   => __( 'Cancel', 'tbt-flashcards' ),
+            'dictSubmit'   => __( 'Add word', 'tbt-flashcards' ),
+            'hintEmpty'    => __( 'Type a group name or pick one from the list.', 'tbt-flashcards' ),
+            'hintOne'      => __( '1 word in this group.', 'tbt-flashcards' ),
+            'hintMany'     => __( '%d words in this group.', 'tbt-flashcards' ),
+            'hintNewLabel' => __( 'New group:', 'tbt-flashcards' ),
+            'hintNew'      => __( '“%s” will be created when you add the word.', 'tbt-flashcards' ),
+            'needGroup'    => __( 'Pick a group or type a new one.', 'tbt-flashcards' ),
+            'toastOne'     => __( '+%1$d point · added to %2$s', 'tbt-flashcards' ),
+            'toastMany'    => __( '+%1$d points · added to %2$s', 'tbt-flashcards' ),
+            'toastNone'    => __( 'Added to %s', 'tbt-flashcards' ),
+            'already'      => __( 'Already in your dictionary (%s)', 'tbt-flashcards' ),
+            'expired'      => __( 'Your session has expired. Reload the page and try again.', 'tbt-flashcards' ),
+            'failed'       => __( 'Could not add the word. Try again.', 'tbt-flashcards' ),
+        );
+    }
+
     $search_icon = '<svg class="tbt-fc-gl-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>';
 
     ob_start();
     ?>
-<div class="tbt-fc-gl"<?php echo $domain ? ' data-domain="' . esc_attr( $domain ) . '"' : ''; ?> data-rows="<?php echo esc_attr( wp_json_encode( $rows ) ); ?>" data-i18n="<?php echo esc_attr( wp_json_encode( $i18n ) ); ?>">
+<div class="tbt-fc-gl"<?php echo $domain ? ' data-domain="' . esc_attr( $domain ) . '"' : ''; ?><?php
+if ( $dict ) {
+    echo ' data-dict="1" data-dict-api="' . esc_url( rest_url( 'tbt-dictionary/v1/' ) ) . '" data-nonce="' . esc_attr( wp_create_nonce( 'wp_rest' ) ) . '" data-user="' . esc_attr( (string) get_current_user_id() ) . '"';
+}
+?> data-rows="<?php echo esc_attr( wp_json_encode( $rows ) ); ?>" data-i18n="<?php echo esc_attr( wp_json_encode( $i18n ) ); ?>">
     <div class="tbt-fc-gl-bar">
         <div class="tbt-fc-gl-search">
             <?php echo $search_icon; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static markup ?>
@@ -226,6 +324,7 @@ function tbt_fc_render_glossary( $atts ) {
             <thead><tr>
                 <th scope="col" data-col="0" aria-sort="none"><button type="button" class="tbt-fc-gl-sort"><?php esc_html_e( 'Expression', 'tbt-flashcards' ); ?> <span class="tbt-fc-gl-arrow" aria-hidden="true">↕</span></button></th>
                 <th scope="col" data-col="1" aria-sort="none"><button type="button" class="tbt-fc-gl-sort"><?php esc_html_e( 'Polish translation', 'tbt-flashcards' ); ?> <span class="tbt-fc-gl-arrow" aria-hidden="true">↕</span></button></th>
+                <?php if ( $dict ) : ?><th scope="col" class="tbt-fc-gl-act"><span class="tbt-fc-gl-vh"><?php esc_html_e( 'My Dictionary', 'tbt-flashcards' ); ?></span></th><?php endif; ?>
             </tr></thead>
             <tbody class="tbt-fc-gl-rows"></tbody>
         </table>

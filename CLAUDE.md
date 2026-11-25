@@ -18,6 +18,10 @@ Keep this file concise. It is loaded at the start of every Claude Code session.
 - 2.0 includes: `includes/access.php` (gate, same rule as Matching Games), `cards.php` (card model, CSV in/out, source rule), `openai.php`, `rest.php` (`tbt-flashcards/v1`), `tools.php`.
 - Shortcodes: `[tbt_flashcards]` (player), `[tbt_flashcards_sets generator="…"]` (teacher library), `[tbt_flashcards_generator library="…"]` (teacher workspace). The two teacher shortcodes render nothing for users without `tbt_fc_can_use_tools()`. Without the attributes, each finds the other's page by searching published pages for its shortcode; the library's Create/Edit links must never point back at the library itself.
 - Source rule (`tbt_fc_get_cards()`): `_tbt_fc_cards` decoding to a non-empty array = editor set; otherwise a legacy set read from `_tbt_csv_url` / `_tbt_csv_file`. Saving a legacy set writes `_tbt_fc_cards` and never touches the CSV meta.
+- Glossary (`includes/glossary.php`): `[tbt_flashcards_glossary ids="…" urls="…" source="post" post="…" domain="…"]`; rows merge sets, then CSVs, then the lesson's stored rows (`tbt_fc_glossary_rows()` drops duplicates). Logged-in users with TBT Dictionary 0.3.0+ get a My Dictionary column (Dictionary's own REST routes; Flashcards never calls Points).
+- Lesson meta (data contracts, 2.4.0): `_tbt_fc_glossary` = JSON list of `[expression, translation]`; `_tbt_fc_glossary_src` = JSON `{table_id, type, source, rows, imported_at}` (a list of those when one lesson merged several tables); `_tbt_fc_wdt_backup` = the lesson's `post_content` before the import, written once, used by Undo (`_tbt_fc_wdt_backup_old` likewise for Divi's `_et_pb_old_content`).
+- wpDataTables import (`includes/glossary-import.php`, pure helpers in `glossary-import-format.php`): wpDataTables' tables are only read, its code never called. Without wpDataTables, `[wpdatatable]` renders `''` (admins: a grey note).
+- Current release: `docs/SPEC-2.4.0.md`.
 - A set's own URL uses the bare `templates/single-deck.php` (no `get_header()`/`get_footer()`), a full-screen deck.
 - Flashcard sets are WordPress-managed content; preserve existing IDs and saved-set compatibility.
 - The plugin registers with TBT Hub but must remain usable when Hub is absent.
@@ -62,6 +66,8 @@ Run `php -l <changed-file>` for changed PHP files.
 Run `node --check <changed-file>` for changed JavaScript files when Node is available.
 
 Run `php tbt-flashcards/tests/test-csv.php` when cards, CSV parsing or export change.
+
+Run `php tbt-flashcards/tests/test-glossary.php && php tbt-flashcards/tests/test-glossary-import.php` when the glossary or the import changes.
 
 For TTS changes, verify at least: authorization/nonce behavior, cache hit, cache miss/generation, and failure handling. For UI changes, verify a saved set through the real shortcode; audio playback and Divi/theme layout require a live browser check when affected.
 
