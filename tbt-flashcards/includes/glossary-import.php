@@ -286,7 +286,7 @@ function tbt_fc_wdt_scan() {
             $items[]  = array( 'table' => $id, 'global' => tbt_fc_wdt_global_module( $post->post_content, $id ) );
             $tables[] = $id;
         }
-        $lessons[ (int) $post->ID ] = tbt_fc_wdt_lesson_info( (int) $post->ID, $items );
+        $lessons[ (int) $post->ID ] = tbt_fc_wdt_lesson_info( (int) $post->ID, $items ) + tbt_fc_wdt_set_links( $post->post_content );
     }
 
     $backed = $wpdb->get_col( "SELECT DISTINCT pm.post_id FROM {$wpdb->postmeta} pm JOIN {$wpdb->posts} p ON p.ID = pm.post_id WHERE pm.meta_key = '_tbt_fc_wdt_backup' AND p.post_type = 'post'" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
@@ -303,6 +303,19 @@ function tbt_fc_wdt_scan() {
     return array(
         'lessons' => array_values( $lessons ),
         'tables'  => array_values( array_unique( $tables ) ),
+    );
+}
+
+/**
+ * Quizlet sets and Multidecker lists linked in a lesson (Paste words).
+ *
+ * @param string $content Post content.
+ * @return array { quizlet: string[], multidecker: string[] }
+ */
+function tbt_fc_wdt_set_links( $content ) {
+    return array(
+        'quizlet'     => tbt_fc_quizlet_ids( $content ),
+        'multidecker' => tbt_fc_multidecker_slugs( $content ),
     );
 }
 
@@ -388,7 +401,6 @@ function tbt_fc_lesson_domain( $post_id ) {
  * @return array { post, ok, note, rows }
  */
 function tbt_fc_wdt_import_post( $post_id, array $table_ids ) {
-    global $wpdb;
     $fail = function ( $note ) use ( $post_id ) {
         return array( 'post' => $post_id, 'ok' => false, 'note' => $note );
     };
@@ -426,6 +438,29 @@ function tbt_fc_wdt_import_post( $post_id, array $table_ids ) {
         );
     }
 
+    return tbt_fc_wdt_store_rows( $post_id, $content, $tables, $rows, $sources );
+}
+
+/**
+ * Store rows on one lesson: the import step shared by the wpDataTables
+ * import and Paste words (2.4.1).
+ *
+ * Rows already stored on the lesson come first; the old content is backed
+ * up once; the first table gets [tbt_flashcards_glossary source="post"],
+ * the others go; the content is saved with $wpdb (no revision, no
+ * save_post), and Divi's _et_pb_old_content copy likewise when it carries
+ * the same table.
+ *
+ * @param int     $post_id Post ID.
+ * @param string  $content The lesson's current post_content.
+ * @param int[]   $tables  Glossary tables to replace, in order (non-empty).
+ * @param array[] $rows    New rows.
+ * @param array[] $sources Source entries for _tbt_fc_glossary_src.
+ * @return array { post, ok, note, rows, imported }
+ */
+function tbt_fc_wdt_store_rows( $post_id, $content, array $tables, array $rows, array $sources ) {
+    global $wpdb;
+
     // Rows already stored on the lesson (an earlier import) come first.
     $stored = tbt_fc_glossary_decode_stored( (string) get_post_meta( $post_id, '_tbt_fc_glossary', true ) );
     $rows   = tbt_fc_wdt_clean_rows( array_merge( $stored, $rows ) );
@@ -453,7 +488,7 @@ function tbt_fc_wdt_import_post( $post_id, array $table_ids ) {
 
     // 4. Save without a revision or save_post.
     if ( false === $wpdb->update( $wpdb->posts, array( 'post_content' => $new ), array( 'ID' => $post_id ) ) ) {
-        return $fail( 'The lesson could not be saved' );
+        return array( 'post' => $post_id, 'ok' => false, 'note' => 'The lesson could not be saved' );
     }
 
     // Divi's pre-builder copy, when it carries the same table.
@@ -514,7 +549,7 @@ function tbt_fc_wdt_undo_post( $post_id ) {
     foreach ( tbt_fc_wdt_glossary_ids( $backup ) as $id ) {
         $items[] = array( 'table' => $id, 'global' => tbt_fc_wdt_global_module( $backup, $id ) );
     }
-    return array( 'post' => $post_id, 'ok' => true, 'note' => '', 'items' => $items );
+    return array( 'post' => $post_id, 'ok' => true, 'note' => '', 'items' => $items ) + tbt_fc_wdt_set_links( $backup );
 }
 
 /**
@@ -553,6 +588,11 @@ function tbt_fc_wdt_register_routes() {
     register_rest_route( TBT_FC_REST_NAMESPACE, '/glossary-import/undo', array(
         'methods'             => 'POST',
         'callback'            => 'tbt_fc_wdt_rest_undo',
+        'permission_callback' => $admin,
+    ) );
+    register_rest_route( TBT_FC_REST_NAMESPACE, '/glossary-import/paste', array(
+        'methods'             => 'POST',
+        'callback'            => 'tbt_fc_wdt_rest_paste',
         'permission_callback' => $admin,
     ) );
     register_rest_route( TBT_FC_REST_NAMESPACE, '/glossary-import/rescan', array(
@@ -652,6 +692,60 @@ function tbt_fc_wdt_rest_undo( WP_REST_Request $request ) {
 }
 
 /**
+ * POST glossary-import/paste {post_id, text}: store words pasted from a
+ * Quizlet export (or any word list) in a lesson that still shows a
+ * wpDataTables glossary, exactly as the import stores read rows.
+ *
+ * @param WP_REST_Request $request Request.
+ * @return WP_REST_Response|WP_Error
+ */
+function tbt_fc_wdt_rest_paste( WP_REST_Request $request ) {
+    $post_id = absint( $request->get_param( 'post_id' ) );
+    $text    = $request->get_param( 'text' );
+    $text    = is_string( $text ) ? $text : '';
+
+    $post    = $post_id ? get_post( $post_id ) : null;
+    $content = $post ? (string) $post->post_content : '';
+    $tables  = tbt_fc_wdt_glossary_ids( $content );
+    if ( ! $post || 'post' !== $post->post_type || 'trash' === $post->post_status || ! $tables ) {
+        return new WP_Error( 'tbt_fc_no_glossary', 'This lesson has no old glossary left.', array( 'status' => 409 ) );
+    }
+    foreach ( $tables as $id ) {
+        $global = tbt_fc_wdt_global_module( $content, $id );
+        if ( $global ) {
+            return new WP_Error( 'tbt_fc_global_module', sprintf( 'Table %d is inside a Divi global module (library item %d): fix by hand.', $id, $global ), array( 'status' => 409 ) );
+        }
+    }
+
+    if ( count( tbt_fc_paste_lines( $text ) ) > TBT_FC_WDT_MAX_ROWS ) {
+        return new WP_Error( 'tbt_fc_too_long', sprintf( 'Paste at most %d lines at a time.', TBT_FC_WDT_MAX_ROWS ), array( 'status' => 400 ) );
+    }
+    $picked = tbt_fc_wdt_two_columns( tbt_fc_parse_pasted( $text ) );
+    $rows   = tbt_fc_paste_limit( tbt_fc_wdt_clean_rows( $picked['rows'] ) );
+    if ( ! $rows ) {
+        return new WP_Error( 'tbt_fc_no_words', 'No words found. Paste the Quizlet export: one word per line, word and translation separated by a tab.', array( 'status' => 400 ) );
+    }
+
+    $quizlet = tbt_fc_quizlet_ids( $content );
+    $source  = array(
+        'table_id'    => $tables[0],
+        'type'        => 'paste',
+        'source'      => $quizlet ? 'quizlet:' . implode( ',', $quizlet ) : 'paste',
+        'rows'        => count( $rows ),
+        'imported_at' => gmdate( 'c' ),
+    );
+    $result  = tbt_fc_wdt_store_rows( $post_id, $content, $tables, $rows, array( $source ) );
+    if ( empty( $result['ok'] ) ) {
+        return new WP_Error( 'tbt_fc_save_failed', $result['note'], array( 'status' => 500 ) );
+    }
+    return rest_ensure_response( array(
+        'rows'     => count( $rows ),
+        'imported' => true,
+        'lesson'   => $result['imported'],
+    ) );
+}
+
+/**
  * POST glossary-import/rescan: forget every cached read.
  *
  * @return WP_REST_Response
@@ -744,6 +838,11 @@ function tbt_fc_wdt_render_page() {
     ?>
 <div class="wrap tbt-fc-imp">
     <h1>Import glossaries</h1>
+    <nav class="nav-tab-wrapper" aria-label="Import glossaries">
+        <a href="#tables" class="nav-tab nav-tab-active" data-tab="tables" aria-current="page">wpDataTables import</a>
+        <a href="#paste-words" class="nav-tab" data-tab="paste">Paste words <span class="tbt-fc-imp-badge" id="tbt-fc-paste-badge"></span></a>
+    </nav>
+    <div class="tbt-fc-imp-panel" id="tbt-fc-imp-panel-tables">
     <p class="tbt-fc-imp-intro">Reads every lesson's old wpDataTables glossary (Google Sheet, Excel file or wpDataTables table), stores its rows in the lesson and swaps the shortcode for <code>[tbt_flashcards_glossary source="post"]</code>. Nothing is written until you press <strong>Import selected</strong>, and every import can be undone.</p>
     <div class="tbt-fc-imp-summary">
         <p class="tbt-fc-imp-counts" id="tbt-fc-imp-counts"></p>
@@ -785,6 +884,25 @@ function tbt_fc_wdt_render_page() {
             </tr></thead>
             <tbody id="tbt-fc-imp-rows"></tbody>
         </table>
+    </div>
+    </div>
+    <div class="tbt-fc-imp-panel" id="tbt-fc-imp-panel-paste" hidden>
+        <p class="tbt-fc-imp-intro tbt-fc-imp-counts" id="tbt-fc-paste-top"></p>
+        <p class="tbt-fc-paste-search">
+            <label class="screen-reader-text" for="tbt-fc-paste-search">Search lessons</label>
+            <input type="search" id="tbt-fc-paste-search" class="regular-text" placeholder="Search lessons">
+        </p>
+        <table class="widefat striped tbt-fc-imp-table tbt-fc-paste-table" id="tbt-fc-paste-table">
+            <thead><tr>
+                <th scope="col">Lesson</th>
+                <th scope="col">Quizlet / Multidecker</th>
+                <th scope="col">Words</th>
+                <td></td>
+            </tr></thead>
+            <tbody id="tbt-fc-paste-rows"></tbody>
+        </table>
+        <p class="tbt-fc-paste-none" id="tbt-fc-paste-none" hidden>No lesson matches the search.</p>
+        <div class="notice notice-success inline" id="tbt-fc-paste-done" hidden><p>Every lesson's glossary is now stored in the lesson. You can remove wpDataTables once the non-lesson pages are gone.</p></div>
     </div>
 </div>
     <?php

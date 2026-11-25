@@ -136,5 +136,65 @@ check( 'domain le', 'le' === tbt_fc_domain_for_category( 3, 'LEARN ENGLISH', 'le
 check( 'domain gi', 'gi' === tbt_fc_domain_for_category( 4, 'GENERAL INTEREST', 'general-interest' ) );
 check( 'domain none', '' === tbt_fc_domain_for_category( 5, 'News', 'news' ) );
 
+// 11. Quizlet set IDs (2.4.1).
+check(
+    'quizlet: embed iframe',
+    array( '868199351' ) === tbt_fc_quizlet_ids( '<iframe src="https://quizlet.com/868199351/flashcards/embed?i=ki5an&x=1jj1" height="500"></iframe>' )
+);
+check( 'quizlet: /pl/…/slug/ link', array( '123456789' ) === tbt_fc_quizlet_ids( '<a href="https://quizlet.com/pl/123456789/why-we-sleep-flash-cards/">set</a>' ) );
+check(
+    'quizlet: two sets, repeats dropped, in order',
+    array( '868199351', '868199852' ) === tbt_fc_quizlet_ids( 'quizlet.com/868199351/flashcards/embed … quizlet.com/868199852/flashcards/embed … https://quizlet.com/868199351/' )
+);
+check( 'quizlet: none', array() === tbt_fc_quizlet_ids( 'No set here, quizlet.com/live and quizlet.com/1234 only' ) );
+
+// 12. Multidecker lists (2.4.1).
+check(
+    'multidecker: four lists from embeds',
+    array( 'why-we-sleep-part-1-5e140c72974472086c49cf21', 'why-we-sleep-part-2-5e140f7d974472086c49cf2a' ) === tbt_fc_multidecker_slugs(
+        '<iframe src="https://multidecker.com/list/why-we-sleep-part-1-5e140c72974472086c49cf21/play"></iframe>'
+        . '<iframe src="https://multidecker.com/list/why-we-sleep-part-2-5e140f7d974472086c49cf2a/play"></iframe>'
+        . '<a href="https://multidecker.com/list/why-we-sleep-part-1-5e140c72974472086c49cf21/">again</a>'
+    )
+);
+check( 'multidecker: none', array() === tbt_fc_multidecker_slugs( 'https://multidecker.com/ and quizlet.com/868199351/' ) );
+
+// 13. parse_pasted (2.4.1).
+$sample = "motionless\tnieruchomy\ntransition\tprzejście, przemiana\npull an all-nighter\tzarwać nockę\n";
+check(
+    'paste: tab lines (Why we sleep sample)',
+    array( array( 'motionless', 'nieruchomy' ), array( 'transition', 'przejście, przemiana' ), array( 'pull an all-nighter', 'zarwać nockę' ) ) === tbt_fc_parse_pasted( $sample ),
+    var_export( tbt_fc_parse_pasted( $sample ), true )
+);
+$p = tbt_fc_parse_pasted( "motionless - nieruchomy\npull an all-nighter – zarwać nockę - nie spać\r\nwell-being - dobrostan" );
+check(
+    'paste: " - " and " – " lines, first occurrence, hyphenated words kept',
+    array( array( 'motionless', 'nieruchomy' ), array( 'pull an all-nighter', 'zarwać nockę - nie spać' ), array( 'well-being', 'dobrostan' ) ) === $p,
+    var_export( $p, true )
+);
+$p = tbt_fc_parse_pasted( "motionless; nieruchomy\ntransition; przejście, przemiana\nsleep; spać" );
+check(
+    'paste: ";" lines beat a "," in one line',
+    array( array( 'motionless', ' nieruchomy' ), array( 'transition', ' przejście, przemiana' ), array( 'sleep', ' spać' ) ) === $p,
+    var_export( $p, true )
+);
+$p = tbt_fc_parse_pasted( "\n\nmotionless\tnieruchomy\n   \n\ntransition\tprzejście\n\n" );
+check( 'paste: blank lines skipped', array( array( 'motionless', 'nieruchomy' ), array( 'transition', 'przejście' ) ) === $p, var_export( $p, true ) );
+$p = tbt_fc_parse_pasted( "motionless\tnieruchomy\nserendipity\ntransition\tprzejście" );
+check( 'paste: a line without the separator has no translation', array( 'serendipity', '' ) === $p[1], var_export( $p, true ) );
+check( 'paste: no separator anywhere', array( array( 'one', '' ), array( 'two words', '' ) ) === tbt_fc_parse_pasted( "one\ntwo words" ) );
+$two = $sample . "\nMotionless\tbez ruchu\nsnore\tchrapać\n";
+$r   = tbt_fc_wdt_clean_rows( tbt_fc_wdt_two_columns( tbt_fc_parse_pasted( $two ) )['rows'] );
+check(
+    'paste: two exports together, the repeated word kept once (first wins)',
+    array( array( 'motionless', 'nieruchomy' ), array( 'transition', 'przejście, przemiana' ), array( 'pull an all-nighter', 'zarwać nockę' ), array( 'snore', 'chrapać' ) ) === $r,
+    var_export( $r, true )
+);
+$r = tbt_fc_wdt_clean_rows( tbt_fc_wdt_two_columns( tbt_fc_parse_pasted( "Term\tTranslation\n" . $sample ) )['rows'] );
+check( 'paste: a header line is dropped', 3 === count( $r ) && 'motionless' === $r[0][0], var_export( $r, true ) );
+check( 'paste: blank text gives no rows', array() === tbt_fc_parse_pasted( " \n\n\t\n" ) && array() === tbt_fc_parse_pasted( '' ) );
+$long = tbt_fc_paste_limit( array( array( str_repeat( 'ą', 130 ), str_repeat( 'b', 200 ) ) ) );
+check( 'paste: limits cut to 120 / 190 characters', 120 === mb_strlen( $long[0][0], 'UTF-8' ) && 190 === strlen( $long[0][1] ) );
+
 echo $failures ? "\n$failures failure(s)\n" : "\nAll tests passed\n";
 exit( $failures ? 1 : 0 );

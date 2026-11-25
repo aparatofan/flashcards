@@ -29,4 +29,13 @@ Rows come from sets first, then CSV files, then stored rows; a repeated expressi
 3. **Undo** (per lesson) or **Undo all** brings back the lesson's content from before its first import and deletes the stored rows. Edits made to the lesson after the import are lost by Undo.
 4. **Copy failed list** copies "Lesson — edit link — table ID — note" lines, to fix those lessons by hand (e.g. export the sheet as CSV and use `urls="…"`).
 
+### Paste words (2.4.1)
+
+For lessons whose old glossary can't be read (deleted or private Google Sheets, a missing table), the **Paste words** tab lists every lesson that still shows a wpDataTables glossary, A–Z, with a search box and a count badge. It is built from the posts on every page load (no cache), so it is right even straight after purging LiteSpeed.
+
+- Each row links the lesson's Quizlet sets (**Open set 1**, **Open set 2**…, from `quizlet.com/…` URLs in its content) and Multidecker lists (**Open Multidecker 1**…, from `multidecker.com/list/…`). Only `post_content` is searched, not Divi global modules.
+- In Quizlet choose **⋯ → Export**, copy the text and paste it into the lesson's box. One card per line; the separator is a tab when any line has one, otherwise ` - ` / ` – `, `;` or `,` (whichever most lines use, split at the first one). Several exports can go into one box. The line under the box ("34 words read · tab-separated") is a preview; the server parses again.
+- **Save** stores the words exactly like an import (`_tbt_fc_glossary`, `_tbt_fc_glossary_src` with `type: "paste"`, `source: "quizlet:{ids}"` or `"paste"` and the replaced `table_id`, backup, shortcode swap). The lesson then shows in the imported list, where **Undo** works as usual. Limits: 2 000 lines per paste; terms are cut at 120 characters, translations at 190.
+- REST: `POST /tbt-flashcards/v1/glossary-import/paste {post_id, text}` (administrators, `wp_rest` nonce) → `{rows, imported: true, lesson}`; 409 when the lesson has no old glossary left, 400 when no words were found.
+
 When wpDataTables is deactivated, any `[wpdatatable]` left renders nothing for visitors and a grey note for administrators.
