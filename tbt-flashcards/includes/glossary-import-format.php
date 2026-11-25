@@ -529,3 +529,122 @@ function tbt_fc_domain_for_category( $term_id, $name, $slug ) {
     }
     return '';
 }
+
+/* ---------- Paste words (2.4.1) ---------- */
+
+/**
+ * Quizlet set IDs linked or embedded in a content, unique, in order.
+ * Matches quizlet.com/123456789/…, quizlet.com/pl/123456789/slug/ and the
+ * like (a two-letter language part is allowed before the ID).
+ *
+ * @param string $content Post content.
+ * @return string[]
+ */
+function tbt_fc_quizlet_ids( $content ) {
+    preg_match_all( '#quizlet\.com/(?:[a-z]{2}/)?(\d{5,})#i', (string) $content, $m );
+    return array_values( array_unique( $m[1] ) );
+}
+
+/**
+ * Multidecker list slugs linked or embedded in a content, unique, in order
+ * (multidecker.com/list/{slug}/…).
+ *
+ * @param string $content Post content.
+ * @return string[]
+ */
+function tbt_fc_multidecker_slugs( $content ) {
+    preg_match_all( '#multidecker\.com/list/([A-Za-z0-9_-]+)#i', (string) $content, $m );
+    return array_values( array_unique( $m[1] ) );
+}
+
+/**
+ * The separator a pasted text uses: "\t" when any line has a tab;
+ * otherwise " - " (or " – "), ";" or ",", whichever the most lines contain
+ * (ties in that order); '' when no line has one.
+ * assets/js/glossary-import.js mirrors this for its preview.
+ *
+ * @param string[] $lines Non-empty lines.
+ * @return string "\t", '-', ';', ',' or ''.
+ */
+function tbt_fc_paste_separator( array $lines ) {
+    $counts = array( '-' => 0, ';' => 0, ',' => 0 );
+    foreach ( $lines as $line ) {
+        if ( false !== strpos( $line, "\t" ) ) {
+            return "\t";
+        }
+        if ( preg_match( '/ [-–] /u', $line ) ) {
+            $counts['-']++;
+        }
+        if ( false !== strpos( $line, ';' ) ) {
+            $counts[';']++;
+        }
+        if ( false !== strpos( $line, ',' ) ) {
+            $counts[',']++;
+        }
+    }
+    $best = '';
+    $max  = 0;
+    foreach ( $counts as $sep => $n ) {
+        if ( $n > $max ) {
+            $best = $sep;
+            $max  = $n;
+        }
+    }
+    return $best;
+}
+
+/**
+ * Non-empty lines of a pasted text (a UTF-8 BOM is dropped).
+ *
+ * @param string $text Pasted text.
+ * @return string[]
+ */
+function tbt_fc_paste_lines( $text ) {
+    $text = (string) $text;
+    if ( 0 === strncmp( $text, "\xEF\xBB\xBF", 3 ) ) {
+        $text = substr( $text, 3 );
+    }
+    $lines = preg_split( '/\r\n|\r|\n/', $text );
+    return array_values( array_filter( $lines, function ( $line ) {
+        return '' !== trim( $line );
+    } ) );
+}
+
+/**
+ * Raw [term, translation] pairs from a pasted export, one card per line,
+ * split at the first separator (see tbt_fc_paste_separator()). A line
+ * without the separator has an empty translation. Cleaning is left to
+ * tbt_fc_wdt_two_columns() (header) and tbt_fc_wdt_clean_rows().
+ *
+ * @param string $text Pasted text.
+ * @return array[]
+ */
+function tbt_fc_parse_pasted( $text ) {
+    $lines = tbt_fc_paste_lines( $text );
+    $sep   = tbt_fc_paste_separator( $lines );
+    $rows  = array();
+    foreach ( $lines as $line ) {
+        if ( '-' === $sep ) {
+            $parts = preg_split( '/ [-–] /u', $line, 2 );
+            $parts = $parts ? $parts : array( $line ); // Invalid UTF-8.
+        } elseif ( '' !== $sep ) {
+            $parts = explode( $sep, $line, 2 );
+        } else {
+            $parts = array( $line );
+        }
+        $rows[] = array( $parts[0], isset( $parts[1] ) ? $parts[1] : '' );
+    }
+    return $rows;
+}
+
+/**
+ * Cut terms and translations to their limits (120 and 190 characters).
+ *
+ * @param array $rows Clean rows.
+ * @return array[]
+ */
+function tbt_fc_paste_limit( array $rows ) {
+    return array_map( function ( $row ) {
+        return array( trim( mb_substr( $row[0], 0, 120, 'UTF-8' ) ), trim( mb_substr( $row[1], 0, 190, 'UTF-8' ) ) );
+    }, $rows );
+}

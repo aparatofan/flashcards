@@ -6,6 +6,10 @@
  * imports the ticked lessons (20 per request) or undoes imports. The server
  * re-reads every table itself; rows are never sent from here. All text is
  * set with textContent.
+ *
+ * Paste words (2.4.1): one row per lesson still showing a wpDataTables
+ * glossary, with its Quizlet/Multidecker links and a box for a Quizlet
+ * export. The word count here is a preview; the server parses again.
  */
 ( function () {
     'use strict';
@@ -218,6 +222,7 @@
             return 'imported' === r.state;
         } );
         counts();
+        renderPaste();
 
         tally.textContent = ready.length + ' ready · ' + failed.length + ' failed' + ( imported.length ? ' · ' + imported.length + ' imported' : '' );
         undoAllBtn.hidden = ! imported.length;
@@ -424,6 +429,8 @@
                     if ( lesson && r.ok ) {
                         lesson.imported = null;
                         lesson.items = r.items || [];
+                        lesson.quizlet = r.quizlet || [];
+                        lesson.multidecker = r.multidecker || [];
                         delete failedRun[ r.post ];
                     }
                 } );
@@ -545,6 +552,281 @@
         } );
         render();
     } );
+
+    /* ---------- Paste words (2.4.1) ---------- */
+
+    var pasteBadge = $( 'tbt-fc-paste-badge' );
+    var pasteTop = $( 'tbt-fc-paste-top' );
+    var pasteSearch = $( 'tbt-fc-paste-search' );
+    var pasteTable = $( 'tbt-fc-paste-table' );
+    var pasteBody = $( 'tbt-fc-paste-rows' );
+    var pasteNone = $( 'tbt-fc-paste-none' );
+    var pasteDone = $( 'tbt-fc-paste-done' );
+    var pasteRows = {}; // post → { tr, saving, saved }
+    var HEADER_TERM = /^(item|items|word|words|expression|expressions|english|phrase|phrases|term|terms|vocabulary|glossary)\b/i;
+    var HEADER_TRANSLATION = /(translation|polish|polski|tłumaczenie)/i;
+    var SEP_LABEL = { '\t': 'tab-separated', '-': 'separated by " - "', ';': 'separated by ";"', ',': 'separated by ","', '': 'no separator found: words only' };
+
+    // Mirrors tbt_fc_paste_separator() / tbt_fc_parse_pasted() and, roughly,
+    // the header rule and clean_rows(). Preview only.
+    function pasteSeparator( lines ) {
+        var counts = { '-': 0, ';': 0, ',': 0 };
+        for ( var i = 0; i < lines.length; i++ ) {
+            if ( lines[ i ].indexOf( '\t' ) >= 0 ) {
+                return '\t';
+            }
+            if ( / [-–] /.test( lines[ i ] ) ) {
+                counts[ '-' ]++;
+            }
+            if ( lines[ i ].indexOf( ';' ) >= 0 ) {
+                counts[ ';' ]++;
+            }
+            if ( lines[ i ].indexOf( ',' ) >= 0 ) {
+                counts[ ',' ]++;
+            }
+        }
+        var best = '';
+        var max = 0;
+        [ '-', ';', ',' ].forEach( function ( sep ) {
+            if ( counts[ sep ] > max ) {
+                best = sep;
+                max = counts[ sep ];
+            }
+        } );
+        return best;
+    }
+
+    function parsePaste( text ) {
+        var lines = String( text || '' ).replace( /^﻿/, '' ).split( /\r\n|\r|\n/ ).filter( function ( l ) {
+            return '' !== l.trim();
+        } );
+        var sep = pasteSeparator( lines );
+        var rows = lines.map( function ( line ) {
+            var at = -1;
+            var len = 0;
+            if ( '-' === sep ) {
+                var m = / [-–] /.exec( line );
+                at = m ? m.index : -1;
+                len = 3;
+            } else if ( sep ) {
+                at = line.indexOf( sep );
+                len = sep.length;
+            }
+            return at < 0 ? [ line, '' ] : [ line.slice( 0, at ), line.slice( at + len ) ];
+        } );
+        var clean = function ( v ) {
+            return v.replace( /<\/?[a-z][a-z0-9]*(?:\s[^<>]*)?\/?>/gi, ' ' ).replace( /[\s   ﻿]+/g, ' ' ).trim();
+        };
+        if ( rows.length && ( HEADER_TERM.test( rows[ 0 ][ 0 ].trim() ) || HEADER_TRANSLATION.test( rows[ 0 ][ 1 ] ) ) ) {
+            rows.shift();
+        }
+        var seen = {};
+        var words = 0;
+        rows.forEach( function ( r ) {
+            var term = clean( r[ 0 ] );
+            var key = term.toLowerCase();
+            if ( term && ! seen[ key ] ) {
+                seen[ key ] = true;
+                words++;
+            }
+        } );
+        return { words: words, lines: lines.length, sep: sep };
+    }
+
+    function pending() {
+        return lessons.filter( function ( l ) {
+            return l.items && l.items.length;
+        } ).sort( function ( a, b ) {
+            return String( a.title ).localeCompare( String( b.title ) );
+        } );
+    }
+
+    function setLinks( td, lesson ) {
+        var links = [];
+        ( lesson.quizlet || [] ).forEach( function ( id, i ) {
+            links.push( [ 'Open set ' + ( i + 1 ), 'https://quizlet.com/' + encodeURIComponent( id ) + '/' ] );
+        } );
+        ( lesson.multidecker || [] ).forEach( function ( slug, i ) {
+            links.push( [ 'Open Multidecker ' + ( i + 1 ), 'https://multidecker.com/list/' + encodeURIComponent( slug ) + '/' ] );
+        } );
+        if ( ! links.length ) {
+            td.appendChild( el( 'span', 'tbt-fc-imp-grey', 'No Quizlet set in this lesson' ) );
+            return;
+        }
+        links.forEach( function ( link, i ) {
+            if ( i ) {
+                td.appendChild( el( 'br' ) );
+            }
+            var a = el( 'a', '', link[ 0 ] );
+            a.href = link[ 1 ];
+            a.target = '_blank';
+            a.rel = 'noopener noreferrer';
+            td.appendChild( a );
+        } );
+    }
+
+    function pasteRow( lesson ) {
+        var state = { saving: false, saved: false };
+        var tr = el( 'tr', 'tbt-fc-paste-row' );
+        var lessonTd = lessonCell( lesson );
+        if ( lesson.edit ) {
+            var e = el( 'a', 'tbt-fc-imp-view', 'Edit' );
+            e.href = lesson.edit;
+            lessonTd.appendChild( lesson.view ? document.createTextNode( ' · ' ) : el( 'br' ) );
+            lessonTd.appendChild( e );
+        }
+        tr.appendChild( lessonTd );
+
+        var links = el( 'td', 'tbt-fc-paste-links' );
+        setLinks( links, lesson );
+        tr.appendChild( links );
+
+        var words = el( 'td', 'tbt-fc-paste-words' );
+        var box = el( 'textarea', 'large-text' );
+        box.rows = 4;
+        box.placeholder = 'Paste the Quizlet export here';
+        box.setAttribute( 'aria-label', 'Words for ' + ( lesson.title || '#' + lesson.post ) );
+        var info = el( 'p', 'tbt-fc-imp-meta tbt-fc-paste-info' );
+        var err = el( 'p', 'tbt-fc-imp-bad tbt-fc-paste-error' );
+        err.hidden = true;
+        words.appendChild( box );
+        words.appendChild( info );
+        words.appendChild( err );
+        tr.appendChild( words );
+
+        var act = el( 'td', 'tbt-fc-paste-act' );
+        var save = el( 'button', 'button button-primary', 'Save' );
+        save.type = 'button';
+        act.appendChild( save );
+        tr.appendChild( act );
+
+        var preview = function () {
+            if ( state.saved ) {
+                save.disabled = true;
+                return;
+            }
+            var p = parsePaste( box.value );
+            info.textContent = p.lines ? p.words + ( 1 === p.words ? ' word' : ' words' ) + ' read · ' + SEP_LABEL[ p.sep ] : '';
+            save.disabled = state.saving || state.saved || ! box.value.trim();
+        };
+        box.addEventListener( 'input', function () {
+            err.hidden = true;
+            preview();
+        } );
+        preview();
+
+        save.addEventListener( 'click', function () {
+            if ( state.saving || state.saved ) {
+                return;
+            }
+            state.saving = true;
+            err.hidden = true;
+            preview();
+            api( 'paste', { post_id: lesson.post, text: box.value } ).then( function ( res ) {
+                state.saved = true;
+                box.disabled = true;
+                tr.classList.add( 'tbt-fc-paste-saved' );
+                info.textContent = '';
+                info.appendChild( el( 'span', 'tbt-fc-imp-ok', '✓ Saved · ' + res.rows + ( 1 === res.rows ? ' word' : ' words' ) ) );
+                window.setTimeout( function () {
+                    tr.classList.add( 'tbt-fc-paste-gone' );
+                    window.setTimeout( function () {
+                        ( lesson.items || [] ).forEach( function ( i ) {
+                            delete checked[ lesson.post + ':' + i.table ];
+                        } );
+                        delete failedRun[ lesson.post ];
+                        lesson.items = [];
+                        lesson.imported = res.lesson || { tables: [], rows: res.rows, at: '' };
+                        if ( tr.parentNode ) {
+                            tr.parentNode.removeChild( tr );
+                        }
+                        delete pasteRows[ lesson.post ];
+                        render();
+                    }, 400 );
+                }, 1500 );
+            } ).catch( function ( e ) {
+                err.textContent = e.message;
+                err.hidden = false;
+            } ).then( function () {
+                state.saving = false;
+                preview();
+            } );
+        } );
+
+        state.tr = tr;
+        return state;
+    }
+
+    function renderPaste() {
+        var list = pending();
+        var n = list.length;
+        var q = pasteSearch.value.trim().toLowerCase();
+        var keep = {};
+        var shown = 0;
+
+        list.forEach( function ( lesson ) {
+            var row = pasteRows[ lesson.post ] || ( pasteRows[ lesson.post ] = pasteRow( lesson ) );
+            keep[ lesson.post ] = true;
+            row.tr.hidden = !! q && String( lesson.title ).toLowerCase().indexOf( q ) < 0;
+            if ( ! row.tr.hidden ) {
+                shown++;
+            }
+            pasteBody.appendChild( row.tr ); // Moves it into A–Z order.
+        } );
+        Object.keys( pasteRows ).forEach( function ( post ) {
+            if ( ! keep[ post ] && ! pasteRows[ post ].saved ) {
+                var tr = pasteRows[ post ].tr;
+                if ( tr.parentNode ) {
+                    tr.parentNode.removeChild( tr );
+                }
+                delete pasteRows[ post ];
+            }
+        } );
+
+        pasteBadge.textContent = n ? String( n ) : '';
+        pasteBadge.hidden = ! n;
+        pasteTop.textContent = '';
+        pasteTop.appendChild( el( 'strong', '', n ) );
+        pasteTop.appendChild( document.createTextNode( ( 1 === n ? ' lesson still uses' : ' lessons still use' ) + ' an old wpDataTables glossary. Open the Quizlet set, choose ' ) );
+        pasteTop.appendChild( el( 'strong', '', '⋯ → Export' ) );
+        pasteTop.appendChild( document.createTextNode( ', copy the text, paste it here and press ' ) );
+        pasteTop.appendChild( el( 'strong', '', 'Save' ) );
+        pasteTop.appendChild( document.createTextNode( '.' ) );
+
+        var collapsing = Object.keys( pasteRows ).length > 0;
+        pasteTop.hidden = ! n;
+        pasteSearch.parentNode.hidden = ! n;
+        pasteTable.hidden = ! n && ! collapsing;
+        pasteNone.hidden = ! n || shown > 0;
+        pasteDone.hidden = n > 0 || collapsing;
+    }
+
+    pasteSearch.addEventListener( 'input', renderPaste );
+
+    // Tabs.
+    function showTab( name ) {
+        Array.prototype.forEach.call( document.querySelectorAll( '.tbt-fc-imp .nav-tab[data-tab]' ), function ( t ) {
+            var on = t.getAttribute( 'data-tab' ) === name;
+            t.classList.toggle( 'nav-tab-active', on );
+            if ( on ) {
+                t.setAttribute( 'aria-current', 'page' );
+            } else {
+                t.removeAttribute( 'aria-current' );
+            }
+        } );
+        $( 'tbt-fc-imp-panel-tables' ).hidden = 'tables' !== name;
+        $( 'tbt-fc-imp-panel-paste' ).hidden = 'paste' !== name;
+    }
+    Array.prototype.forEach.call( document.querySelectorAll( '.tbt-fc-imp .nav-tab[data-tab]' ), function ( t ) {
+        t.addEventListener( 'click', function ( e ) {
+            e.preventDefault();
+            showTab( t.getAttribute( 'data-tab' ) );
+            if ( window.history && window.history.replaceState ) {
+                window.history.replaceState( null, '', t.getAttribute( 'href' ) );
+            }
+        } );
+    } );
+    showTab( '#paste-words' === window.location.hash ? 'paste' : 'tables' );
 
     list.hidden = false;
     render();

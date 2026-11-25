@@ -105,3 +105,55 @@
 .tbt-fc-imp-confirm {
     max-width: 780px;
 }
+
+/* Paste words (2.4.1) */
+
+.tbt-fc-imp .nav-tab-wrapper {
+    margin-bottom: 12px;
+}
+
+.tbt-fc-imp-badge {
+    display: inline-block;
+    min-width: 18px;
+    padding: 0 6px;
+    margin-left: 4px;
+    border-radius: 9px;
+    background: #d63638;
+    color: #fff;
+    font-size: 11px;
+    line-height: 18px;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.tbt-fc-paste-table td:first-child {
+    width: 26%;
+}
+
+.tbt-fc-paste-links {
+    width: 16%;
+}
+
+.tbt-fc-paste-words textarea {
+    width: 100%;
+    font-family: Consolas, Monaco, monospace;
+    font-size: 12px;
+}
+
+.tbt-fc-paste-info,
+.tbt-fc-paste-error {
+    margin: 4px 0 0;
+}
+
+.tbt-fc-paste-act {
+    width: 70px;
+}
+
+.tbt-fc-paste-table tr.tbt-fc-paste-saved td {
+    background: #edfaef;
+}
+
+.tbt-fc-paste-table tr.tbt-fc-paste-gone {
+    opacity: 0;
+    transition: opacity 0.4s;
+}
